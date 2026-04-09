@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: game_platform
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo:27017/game_platform
+      - JWT_SECRET=dev-secret-change-in-prod
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - mongo
+    volumes:
+      - ./server/src:/app/src
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_SOCKET_URL=http://localhost:3001
+    depends_on:
+      - server
+    volumes:
+      - ./client/src:/app/src
+
+volumes:
+  mongo_data:

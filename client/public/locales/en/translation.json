@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Game Platform",
+    "loading": "Loading..."
+  },
+  "nav": {
+    "home": "Home",
+    "lobby": "Lobby",
+    "history": "History",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "friends": "Friends",
+    "language": "Language"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "confirmPassword": "Confirm Password",
+    "loginWithGoogle": "Login with Google",
+    "playAsGuest": "Play as Guest",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "loginError": "Invalid email or password",
+    "registerError": "Registration failed"
+  },
+  "home": {
+    "welcome": "Choose a Game",
+    "subtitle": "Pick a game and start playing with friends!",
+    "chess": "Chess",
+    "checkers": "Checkers",
+    "charades": "Charades",
+    "chessDesc": "Classic strategy board game for two players",
+    "checkersDesc": "Classic 8x8 checkers board game",
+    "charadesDesc": "Draw and guess with friends (2-12 players)"
+  },
+  "lobby": {
+    "title": "{{game}} Lobby",
+    "createRoom": "Create Room",
+    "joinByCode": "Join by Code",
+    "roomCode": "Room Code",
+    "join": "Join",
+    "public": "Public",
+    "private": "Private",
+    "players": "{{current}}/{{max}} players",
+    "waiting": "Waiting for players...",
+    "noRooms": "No rooms available. Create one!",
+    "timerMinutes": "Timer (minutes)",
+    "maxPlayers": "Max Players",
+    "visibility": "Visibility",
+    "create": "Create"
+  },
+  "game": {
+    "yourTurn": "Your turn",
+    "opponentTurn": "Opponent's turn",
+    "resign": "Resign",
+    "gameOver": "Game Over",
+    "youWin": "You win!",
+    "youLose": "You lose",
+    "draw": "Draw",
+    "white": "White",
+    "black": "Black",
+    "waiting": "Waiting for opponent..."
+  },
+  "charades": {
+    "draw": "Draw: {{word}}",
+    "guess": "Type your guess...",
+    "correct": "{{player}} guessed correctly!",
+    "roundOver": "Round over! The word was: {{word}}",
+    "scores": "Scores",
+    "yourTurnToDraw": "Your turn to draw!",
+    "guessing": "Guess what's being drawn..."
+  },
+  "friends": {
+    "title": "Friends",
+    "search": "Search users...",
+    "addFriend": "Add Friend",
+    "requests": "Friend Requests",
+    "accept": "Accept",
+    "reject": "Reject",
+    "online": "Online",
+    "offline": "Offline",
+    "noFriends": "No friends yet",
+    "sendMessage": "Type a message..."
+  },
+  "history": {
+    "title": "Game History",
+    "noGames": "No games played yet",
+    "won": "Won",
+    "lost": "Lost",
+    "drew": "Draw",
+    "duration": "Duration: {{minutes}}m {{seconds}}s",
+    "players": "Players"
+  },
+  "room": {
+    "code": "Room Code: {{code}}",
+    "start": "Start Game",
+    "leave": "Leave Room",
+    "host": "Host",
+    "player": "Player"
+  }
+}

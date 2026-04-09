@@ -1,0 +1,16 @@
+{
+  "en": {
+    "animals": ["cat", "dog", "elephant", "giraffe", "penguin", "dolphin", "butterfly", "eagle", "snake", "turtle", "rabbit", "lion", "bear", "monkey", "horse", "fish", "spider", "octopus", "parrot", "kangaroo", "whale", "frog", "crocodile", "owl", "shark"],
+    "objects": ["umbrella", "bicycle", "guitar", "camera", "telescope", "scissors", "ladder", "candle", "clock", "mirror", "balloon", "key", "hammer", "pillow", "trophy", "backpack", "headphones", "microphone", "sunglasses", "toothbrush", "compass", "flashlight", "magnet", "envelope", "suitcase"],
+    "actions": ["swimming", "dancing", "cooking", "painting", "sleeping", "running", "climbing", "fishing", "singing", "reading", "flying", "surfing", "skiing", "juggling", "typing", "sneezing", "yawning", "waving", "jumping", "crying", "laughing", "digging", "rowing", "boxing", "knitting"],
+    "food": ["pizza", "hamburger", "spaghetti", "ice cream", "cake", "sushi", "popcorn", "pancake", "sandwich", "donut", "watermelon", "banana", "chocolate", "cookie", "french fries", "taco", "soup", "bread", "cheese", "apple pie", "salad", "hot dog", "pineapple", "grapes", "cupcake"],
+    "places": ["beach", "castle", "hospital", "library", "museum", "cinema", "airport", "mountain", "island", "desert", "forest", "zoo", "school", "church", "bridge", "lighthouse", "volcano", "waterfall", "pyramid", "stadium"]
+  },
+  "pl": {
+    "zwierzeta": ["kot", "pies", "slon", "zyrafa", "pingwin", "delfin", "motyl", "orzel", "waz", "zolw", "krolik", "lew", "niedzwiedz", "malpa", "kon", "ryba", "pajak", "osmiorrnica", "papuga", "kangur", "wieloryb", "zaba", "krokodyl", "sowa", "rekin"],
+    "przedmioty": ["parasol", "rower", "gitara", "aparat", "teleskop", "nozyczki", "drabina", "swieczka", "zegar", "lustro", "balon", "klucz", "mlotek", "poduszka", "puchar", "plecak", "sluchawki", "mikrofon", "okulary", "szczoteczka", "kompas", "latarka", "magnes", "koperta", "walizka"],
+    "czynnosci": ["plywanie", "tanczenie", "gotowanie", "malowanie", "spanie", "bieganie", "wspinanie", "lowienie", "spiewanie", "czytanie", "latanie", "surfowanie", "jazda na nartach", "zonglowanie", "pisanie", "kichanie", "ziewanie", "machanie", "skakanie", "plakanie", "smianie", "kopanie", "wioslarstwo", "boksowanie", "robienie na drutach"],
+    "jedzenie": ["pizza", "hamburger", "spaghetti", "lody", "tort", "sushi", "popcorn", "nalesnik", "kanapka", "paczek", "arbuz", "banan", "czekolada", "ciastko", "frytki", "pierogi", "zupa", "chleb", "ser", "szarlotka", "salatka", "hotdog", "ananas", "winogrona", "babeczka"],
+    "miejsca": ["plaza", "zamek", "szpital", "biblioteka", "muzeum", "kino", "lotnisko", "gora", "wyspa", "pustynia", "las", "zoo", "szkola", "kosciol", "most", "latarnia morska", "wulkan", "wodospad", "piramida", "stadion"]
+  }
+}

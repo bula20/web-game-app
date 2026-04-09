@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Platforma Gier",
+    "loading": "Ładowanie..."
+  },
+  "nav": {
+    "home": "Strona główna",
+    "lobby": "Lobby",
+    "history": "Historia",
+    "login": "Logowanie",
+    "register": "Rejestracja",
+    "logout": "Wyloguj",
+    "friends": "Znajomi",
+    "language": "Język"
+  },
+  "auth": {
+    "login": "Zaloguj się",
+    "register": "Zarejestruj się",
+    "email": "Email",
+    "password": "Hasło",
+    "username": "Nazwa użytkownika",
+    "confirmPassword": "Potwierdź hasło",
+    "loginWithGoogle": "Zaloguj przez Google",
+    "playAsGuest": "Graj jako gość",
+    "noAccount": "Nie masz konta?",
+    "haveAccount": "Masz już konto?",
+    "loginError": "Nieprawidłowy email lub hasło",
+    "registerError": "Rejestracja nie powiodła się"
+  },
+  "home": {
+    "welcome": "Wybierz grę",
+    "subtitle": "Wybierz grę i zacznij grać ze znajomymi!",
+    "chess": "Szachy",
+    "checkers": "Warcaby",
+    "charades": "Kalambury",
+    "chessDesc": "Klasyczna gra strategiczna dla dwóch graczy",
+    "checkersDesc": "Klasyczne warcaby na planszy 8x8",
+    "charadesDesc": "Rysuj i zgaduj ze znajomymi (2-12 graczy)"
+  },
+  "lobby": {
+    "title": "Lobby - {{game}}",
+    "createRoom": "Utwórz pokój",
+    "joinByCode": "Dołącz kodem",
+    "roomCode": "Kod pokoju",
+    "join": "Dołącz",
+    "public": "Publiczny",
+    "private": "Prywatny",
+    "players": "{{current}}/{{max}} graczy",
+    "waiting": "Oczekiwanie na graczy...",
+    "noRooms": "Brak dostępnych pokojów. Utwórz nowy!",
+    "timerMinutes": "Timer (minuty)",
+    "maxPlayers": "Maks. graczy",
+    "visibility": "Widoczność",
+    "create": "Utwórz"
+  },
+  "game": {
+    "yourTurn": "Twój ruch",
+    "opponentTurn": "Ruch przeciwnika",
+    "resign": "Poddaj się",
+    "gameOver": "Koniec gry",
+    "youWin": "Wygrałeś!",
+    "youLose": "Przegrałeś",
+    "draw": "Remis",
+    "white": "Białe",
+    "black": "Czarne",
+    "waiting": "Oczekiwanie na przeciwnika..."
+  },
+  "charades": {
+    "draw": "Rysuj: {{word}}",
+    "guess": "Wpisz swoją odpowiedź...",
+    "correct": "{{player}} odgadł poprawnie!",
+    "roundOver": "Koniec rundy! Hasło to: {{word}}",
+    "scores": "Wyniki",
+    "yourTurnToDraw": "Twoja kolej na rysowanie!",
+    "guessing": "Zgadnij co jest rysowane..."
+  },
+  "friends": {
+    "title": "Znajomi",
+    "search": "Szukaj użytkowników...",
+    "addFriend": "Dodaj znajomego",
+    "requests": "Zaproszenia",
+    "accept": "Akceptuj",
+    "reject": "Odrzuć",
+    "online": "Online",
+    "offline": "Offline",
+    "noFriends": "Brak znajomych",
+    "sendMessage": "Napisz wiadomość..."
+  },
+  "history": {
+    "title": "Historia gier",
+    "noGames": "Brak rozegranych gier",
+    "won": "Wygrana",
+    "lost": "Przegrana",
+    "drew": "Remis",
+    "duration": "Czas: {{minutes}}m {{seconds}}s",
+    "players": "Gracze"
+  },
+  "room": {
+    "code": "Kod pokoju: {{code}}",
+    "start": "Rozpocznij grę",
+    "leave": "Opuść pokój",
+    "host": "Host",
+    "player": "Gracz"
+  }
+}
