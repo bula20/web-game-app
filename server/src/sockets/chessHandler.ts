@@ -1,11 +1,21 @@
 import { Server } from 'socket.io';
-import { Chess } from 'chess.js';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
 import { Game } from '../models/Game.js';
+import {
+  createInitialState,
+  getValidMoves,
+  isValidMove,
+  makeMove,
+  isCheck,
+  algebraicToSquare,
+  squareToAlgebraic,
+  type ChessState,
+  type Board,
+} from '../game-logic/chess.js';
 
 interface ChessGameState {
-  chess: Chess;
+  gameState: ChessState;
   white: { socketId: string; userId: string | null; displayName: string };
   black: { socketId: string; userId: string | null; displayName: string };
   timeWhite: number;
@@ -13,6 +23,7 @@ interface ChessGameState {
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
   lastMoveAt: number;
+  moves: string[]; // SAN notation
 }
 
 const activeGames = new Map<string, ChessGameState>();
@@ -23,20 +34,20 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
       const room = await Room.findOne({ code, gameType: 'chess', status: 'waiting' });
       if (!room || room.players.length < 2) return;
 
-      // Check if socket is the host
       if (room.players[0].socketId !== socket.id) return;
+
+      if (activeGames.has(code)) return;
 
       room.status = 'in_progress';
       await room.save();
 
-      const chess = new Chess();
+      const gameState = createInitialState();
       const timerSeconds = room.timerMinutes * 60;
 
-      // Randomly assign colors
       const shuffled = Math.random() > 0.5 ? [room.players[0], room.players[1]] : [room.players[1], room.players[0]];
 
       const state: ChessGameState = {
-        chess,
+        gameState,
         white: { socketId: shuffled[0].socketId, userId: shuffled[0].userId?.toString() || null, displayName: shuffled[0].displayName },
         black: { socketId: shuffled[1].socketId, userId: shuffled[1].userId?.toString() || null, displayName: shuffled[1].displayName },
         timeWhite: timerSeconds,
@@ -44,17 +55,17 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
         timerInterval: null,
         startedAt: Date.now(),
         lastMoveAt: Date.now(),
+        moves: [],
       };
 
       activeGames.set(code, state);
 
       // Start timer
       state.timerInterval = setInterval(() => {
-        const elapsed = 1;
-        if (state.chess.turn() === 'w') {
-          state.timeWhite -= elapsed;
+        if (state.gameState.turn === 'w') {
+          state.timeWhite -= 1;
         } else {
-          state.timeBlack -= elapsed;
+          state.timeBlack -= 1;
         }
 
         io.to(`room:${code}`).emit('chess:timer_update', {
@@ -62,18 +73,17 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
           timeBlack: Math.max(0, state.timeBlack),
         });
 
-        // Check timeout
         if (state.timeWhite <= 0 || state.timeBlack <= 0) {
           const winner = state.timeWhite <= 0 ? 'black' : 'white';
           endGame(io, code, winner, 'timeout');
         }
       }, 1000);
 
-      // Emit start to both players
       io.to(`room:${code}`).emit('chess:start', {
         white: state.white.socketId,
         black: state.black.socketId,
-        fen: chess.fen(),
+        board: state.gameState.board,
+        turn: state.gameState.turn,
         timeWhite: timerSeconds,
         timeBlack: timerSeconds,
       });
@@ -82,12 +92,47 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
+  socket.on('chess:get_state', ({ code }: { code: string }) => {
+    const state = activeGames.get(code);
+    if (!state) return;
+
+    socket.emit('chess:state', {
+      white: state.white.socketId,
+      black: state.black.socketId,
+      board: state.gameState.board,
+      turn: state.gameState.turn,
+      timeWhite: Math.max(0, state.timeWhite),
+      timeBlack: Math.max(0, state.timeBlack),
+      moves: state.moves,
+      isCheck: isCheck(state.gameState),
+    });
+  });
+
+  socket.on('chess:get_moves', ({ code, position }: { code: string; position: string }) => {
+    const state = activeGames.get(code);
+    if (!state) return;
+
+    const isWhitePlayer = state.white.socketId === socket.id;
+    const isBlackPlayer = state.black.socketId === socket.id;
+    const myColor = isWhitePlayer ? 'w' : isBlackPlayer ? 'b' : null;
+
+    if (myColor !== state.gameState.turn) {
+      socket.emit('chess:valid_moves', { moves: [] });
+      return;
+    }
+
+    const [row, col] = algebraicToSquare(position);
+    const moves = getValidMoves(state.gameState, row, col);
+    socket.emit('chess:valid_moves', {
+      moves: moves.map(([r, c]) => squareToAlgebraic(r, c)),
+    });
+  });
+
   socket.on('chess:move', ({ code, from, to, promotion }: { code: string; from: string; to: string; promotion?: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
 
-    // Verify it's the right player's turn
-    const currentTurn = state.chess.turn();
+    const currentTurn = state.gameState.turn;
     const isWhite = state.white.socketId === socket.id;
     const isBlack = state.black.socketId === socket.id;
 
@@ -96,35 +141,35 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
       return;
     }
 
-    try {
-      const move = state.chess.move({ from, to, promotion: promotion || undefined });
-      if (!move) {
-        socket.emit('chess:invalid_move', { message: 'Invalid move' });
-        return;
-      }
+    const fromPos = algebraicToSquare(from);
+    const toPos = algebraicToSquare(to);
 
-      state.lastMoveAt = Date.now();
-
-      io.to(`room:${code}`).emit('chess:moved', {
-        from,
-        to,
-        promotion: move.promotion,
-        fen: state.chess.fen(),
-        timeWhite: Math.max(0, state.timeWhite),
-        timeBlack: Math.max(0, state.timeBlack),
-      });
-
-      // Check game over conditions
-      if (state.chess.isCheckmate()) {
-        const winner = state.chess.turn() === 'w' ? 'black' : 'white';
-        endGame(io, code, winner, 'checkmate');
-      } else if (state.chess.isDraw()) {
-        endGame(io, code, 'draw', 'draw');
-      } else if (state.chess.isStalemate()) {
-        endGame(io, code, 'draw', 'stalemate');
-      }
-    } catch {
+    if (!isValidMove(state.gameState, fromPos, toPos)) {
       socket.emit('chess:invalid_move', { message: 'Invalid move' });
+      return;
+    }
+
+    const result = makeMove(state.gameState, fromPos, toPos, promotion);
+    state.gameState = result.state;
+    state.moves.push(result.san);
+    state.lastMoveAt = Date.now();
+
+    io.to(`room:${code}`).emit('chess:moved', {
+      board: result.state.board,
+      turn: result.state.turn,
+      timeWhite: Math.max(0, state.timeWhite),
+      timeBlack: Math.max(0, state.timeBlack),
+      san: result.san,
+      color: currentTurn,
+      isCheck: result.isCheck,
+    });
+
+    if (result.isCheckmate) {
+      const winner = currentTurn === 'w' ? 'white' : 'black';
+      endGame(io, code, winner, 'checkmate');
+    } else if (result.isDraw) {
+      const reason = result.isStalemate ? 'stalemate' : 'draw';
+      endGame(io, code, 'draw', reason);
     }
   });
 
@@ -138,7 +183,6 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
   });
 
   socket.on('disconnect', () => {
-    // Check if player was in an active game
     for (const [code, state] of activeGames) {
       if (state.white.socketId === socket.id || state.black.socketId === socket.id) {
         const isWhite = state.white.socketId === socket.id;
@@ -157,7 +201,6 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
 
   io.to(`room:${code}`).emit('chess:game_over', { result: winner, reason });
 
-  // Save to DB
   try {
     const duration = Math.floor((Date.now() - state.startedAt) / 1000);
     await Game.create({
@@ -169,7 +212,7 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
       ],
       winner: winner === 'white' ? state.white.userId : winner === 'black' ? state.black.userId : null,
       result: winner as any,
-      moves: state.chess.history(),
+      moves: state.moves,
       duration,
       finishedAt: new Date(),
     });
@@ -177,7 +220,6 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
     console.error('Failed to save chess game:', error);
   }
 
-  // Update room
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
   } catch { /* ignore */ }

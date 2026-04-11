@@ -63,7 +63,10 @@
     "draw": "Draw",
     "white": "White",
     "black": "Black",
-    "waiting": "Waiting for opponent..."
+    "waiting": "Waiting for opponent...",
+    "moveHistory": "Move History",
+    "promotion": "Choose promotion piece",
+    "check": "Check!"
   },
   "charades": {
     "draw": "Draw: {{word}}",

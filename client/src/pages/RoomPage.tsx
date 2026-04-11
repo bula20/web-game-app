@@ -39,9 +39,9 @@ export function RoomPage() {
     });
 
     // Game start events will navigate to the game page
-    socket.on('chess:start', () => navigate(`/game/chess/${code}`));
-    socket.on('checkers:start', () => navigate(`/game/checkers/${code}`));
-    socket.on('charades:start', () => navigate(`/game/charades/${code}`));
+    socket.on('chess:start', (data: any) => navigate(`/game/chess/${code}`, { state: data }));
+    socket.on('checkers:start', (data: any) => navigate(`/game/checkers/${code}`, { state: data }));
+    socket.on('charades:start', (data: any) => navigate(`/game/charades/${code}`, { state: data }));
 
     // Fetch room data
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {

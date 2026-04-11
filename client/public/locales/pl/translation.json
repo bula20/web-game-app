@@ -63,7 +63,10 @@
     "draw": "Remis",
     "white": "Białe",
     "black": "Czarne",
-    "waiting": "Oczekiwanie na przeciwnika..."
+    "waiting": "Oczekiwanie na przeciwnika...",
+    "moveHistory": "Historia ruchów",
+    "promotion": "Wybierz figurę promocji",
+    "check": "Szach!"
   },
   "charades": {
     "draw": "Rysuj: {{word}}",

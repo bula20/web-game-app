@@ -14,3 +14,7 @@ mongo_data/
 # Helper scripts (not needed in repo)
 _install_*.js
 _setup_*.js
+
+# Claude
+CLAUDE.md
+.claude/

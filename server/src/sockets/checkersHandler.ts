@@ -95,6 +95,19 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     });
   });
 
+  socket.on('checkers:get_state', ({ code }: { code: string }) => {
+    const state = activeGames.get(code);
+    if (!state) return;
+
+    socket.emit('checkers:state', {
+      board: state.board,
+      playerColor: state.white.socketId === socket.id ? 'w' : 'b',
+      turn: state.turn,
+      times: { white: Math.max(0, state.timeWhite), black: Math.max(0, state.timeBlack) },
+      moves: state.moves,
+    });
+  });
+
   socket.on('checkers:get_moves', ({ code, position }: { code: string; position: [number, number] }) => {
     const state = activeGames.get(code);
     if (!state) return;
@@ -148,6 +161,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
         board: state.board,
         turn: state.turn,
         times: { white: state.timeWhite, black: state.timeBlack },
+        lastMove: `${from[0]},${from[1]}-${to[0]},${to[1]}`,
+        moveBy: myColor,
       });
       return;
     }
@@ -160,6 +175,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       board: state.board,
       turn: state.turn,
       times: { white: state.timeWhite, black: state.timeBlack },
+      lastMove: `${from[0]},${from[1]}-${to[0]},${to[1]}`,
+      moveBy: myColor,
     });
 
     // Check game over

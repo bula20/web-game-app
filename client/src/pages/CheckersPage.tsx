@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +23,7 @@ export function CheckersPage() {
   const { socket } = useSocket();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [board, setBoard] = useState<Board>([]);
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w');
@@ -35,25 +36,48 @@ export function CheckersPage() {
   const [result, setResult] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [moveHistory, setMoveHistory] = useState<{ move: string; color: 'w' | 'b' }[]>([]);
+
+  const playerColorRef = useRef(playerColor);
+  playerColorRef.current = playerColor;
+
+  const historyEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll move history to bottom
+  useEffect(() => {
+    historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [moveHistory]);
 
   useEffect(() => {
     if (!socket || !code) return;
 
-    socket.on('checkers:start', (data: { board: Board; playerColor: 'w' | 'b'; times: { white: number; black: number } }) => {
+    const initFromData = (data: { board: Board; playerColor: 'w' | 'b'; turn?: 'w' | 'b'; times: { white: number; black: number }; moves?: string[] }) => {
       setBoard(data.board);
       setPlayerColor(data.playerColor);
-      setIsMyTurn(data.playerColor === 'w');
+      const turn = data.turn ?? 'w';
+      setIsMyTurn(turn === data.playerColor);
       setTimeWhite(data.times.white);
       setTimeBlack(data.times.black);
-    });
+      if (data.moves) {
+        setMoveHistory(data.moves.map((m, i) => ({
+          move: m, color: i % 2 === 0 ? 'w' as const : 'b' as const,
+        })));
+      }
+    };
 
-    socket.on('checkers:moved', (data: { board: Board; turn: 'w' | 'b'; times: { white: number; black: number } }) => {
+    socket.on('checkers:start', initFromData);
+    socket.on('checkers:state', initFromData);
+
+    socket.on('checkers:moved', (data: { board: Board; turn: 'w' | 'b'; times: { white: number; black: number }; lastMove?: string; moveBy?: 'w' | 'b' }) => {
       setBoard(data.board);
-      setIsMyTurn(data.turn === playerColor);
+      setIsMyTurn(data.turn === playerColorRef.current);
       setTimeWhite(data.times.white);
       setTimeBlack(data.times.black);
       setSelectedSquare(null);
       setValidMoves([]);
+      if (data.lastMove && data.moveBy) {
+        setMoveHistory(prev => [...prev, { move: data.lastMove!, color: data.moveBy! }]);
+      }
     });
 
     socket.on('checkers:valid_moves', (data: { moves: [number, number][] }) => {
@@ -74,15 +98,24 @@ export function CheckersPage() {
       setMessages(prev => [...prev, msg]);
     });
 
+    // Use router state if available (passed from RoomPage) for instant init
+    if (location.state?.board && location.state?.playerColor) {
+      initFromData(location.state as any);
+    }
+
+    // Request current game state (handles race condition where checkers:start was missed)
+    socket.emit('checkers:get_state', { code });
+
     return () => {
       socket.off('checkers:start');
+      socket.off('checkers:state');
       socket.off('checkers:moved');
       socket.off('checkers:valid_moves');
       socket.off('checkers:game_over');
       socket.off('checkers:timer_update');
       socket.off('chat:room_message');
     };
-  }, [socket, code, playerColor]);
+  }, [socket, code]);
 
   const handleSquareClick = useCallback((row: number, col: number) => {
     if (gameOver || !socket || !code || !isMyTurn) return;
@@ -90,8 +123,8 @@ export function CheckersPage() {
     const piece = board[row]?.[col];
 
     if (selectedSquare) {
-      const isValidMove = validMoves.some(([r, c]) => r === row && c === col);
-      if (isValidMove) {
+      const isValid = validMoves.some(([r, c]) => r === row && c === col);
+      if (isValid) {
         socket.emit('checkers:move', {
           code,
           from: selectedSquare,
@@ -131,6 +164,11 @@ export function CheckersPage() {
       timestamp: new Date().toISOString(),
     }]);
     setMessageText('');
+  };
+
+  const formatCheckerMove = (move: string): string => {
+    const [from, to] = move.split('-');
+    return `${from} \u2192 ${to}`;
   };
 
   const renderBoard = () => {
@@ -226,36 +264,64 @@ export function CheckersPage() {
         )}
       </div>
 
-      {/* Chat */}
-      <Card className="flex flex-col h-[600px]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Chat</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 mb-3">
-            <div className="space-y-2">
-              {messages.map((msg, i) => (
-                <div key={i} className="text-sm">
-                  <span className="font-medium">{msg.from}: </span>
-                  <span className="text-muted-foreground">{msg.text}</span>
-                </div>
-              ))}
+      {/* Sidebar: Move History + Chat */}
+      <div className="flex flex-col gap-4">
+        {/* Move History */}
+        <Card className="flex flex-col h-[280px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">{t('game.moveHistory', 'Move History')}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="space-y-1 text-sm font-mono">
+                {moveHistory.map((entry, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="text-muted-foreground w-8 text-right">{i + 1}.</span>
+                    <span className={entry.color === 'w' ? 'font-semibold' : 'text-muted-foreground'}>
+                      {formatCheckerMove(entry.move)}
+                    </span>
+                    <Badge variant="outline" className="text-xs h-5">
+                      {entry.color === 'w' ? t('game.white') : t('game.black')}
+                    </Badge>
+                  </div>
+                ))}
+                <div ref={historyEndRef} />
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Chat */}
+        <Card className="flex flex-col h-[300px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Chat</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col">
+            <ScrollArea className="flex-1 mb-3">
+              <div className="space-y-2">
+                {messages.map((msg, i) => (
+                  <div key={i} className="text-sm">
+                    <span className="font-medium">{msg.from}: </span>
+                    <span className="text-muted-foreground">{msg.text}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <div className="flex gap-2">
+              <Input
+                value={messageText}
+                onChange={e => setMessageText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                placeholder={t('friends.sendMessage')}
+                className="flex-1"
+              />
+              <Button size="icon" onClick={sendMessage}>
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          </ScrollArea>
-          <div className="flex gap-2">
-            <Input
-              value={messageText}
-              onChange={e => setMessageText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
-              placeholder={t('friends.sendMessage')}
-              className="flex-1"
-            />
-            <Button size="icon" onClick={sendMessage}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
