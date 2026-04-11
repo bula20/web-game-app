@@ -89,7 +89,10 @@ export function RoomPage() {
     if (code) navigator.clipboard.writeText(code);
   };
 
-  const isHost = room && user && (room.host === user.id || room.players[0]?.userId === user.id);
+  const isHost = room && (
+    (user && (room.host === user.id || room.players[0]?.userId === user.id)) ||
+    (!user && socket?.id === room.players[0]?.socketId)
+  );
   const canStart = room && room.players.length >= 2;
 
   if (!room) {
@@ -142,7 +145,7 @@ export function RoomPage() {
                     {t('room.start')}
                   </Button>
                 )}
-                <Button variant="destructive" onClick={handleLeave}>
+                <Button variant="destructive" className="text-white" onClick={handleLeave}>
                   <LogOut className="h-4 w-4 mr-1" />
                   {t('room.leave')}
                 </Button>

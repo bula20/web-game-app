@@ -173,7 +173,7 @@ export function CheckersPage() {
 
   const renderBoard = () => {
     const flipped = playerColor === 'b';
-    const rows = flipped ? [...Array(BOARD_SIZE).keys()] : [...Array(BOARD_SIZE).keys()].reverse();
+    const rows = flipped ? [...Array(BOARD_SIZE).keys()].reverse() : [...Array(BOARD_SIZE).keys()];
     const cols = flipped ? [...Array(BOARD_SIZE).keys()].reverse() : [...Array(BOARD_SIZE).keys()];
 
     return (
