@@ -72,10 +72,13 @@
     "draw": "Rysuj: {{word}}",
     "guess": "Wpisz swoją odpowiedź...",
     "correct": "{{player}} odgadł poprawnie!",
+    "close": "Blisko...",
     "roundOver": "Koniec rundy! Hasło to: {{word}}",
     "scores": "Wyniki",
     "yourTurnToDraw": "Twoja kolej na rysowanie!",
-    "guessing": "Zgadnij co jest rysowane..."
+    "guessing": "Zgadnij co jest rysowane...",
+    "leaveGame": "Opuść grę",
+    "leaveConfirm": "Czy na pewno chcesz opuścić rozgrywkę?"
   },
   "friends": {
     "title": "Znajomi",

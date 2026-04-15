@@ -22,7 +22,7 @@ export function socketAuthMiddleware(socket: AuthenticatedSocket, next: (err?: E
     socket.userId = decoded.userId;
     socket.isGuest = decoded.isGuest;
     socket.guestName = decoded.guestName;
-    socket.displayName = decoded.guestName || decoded.userId;
+    socket.displayName = decoded.guestName || decoded.username || decoded.userId;
     next();
   } catch {
     next(new Error('Invalid token'));

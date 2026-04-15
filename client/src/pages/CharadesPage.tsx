@@ -33,7 +33,7 @@ export function CharadesPage() {
   const [currentDrawer, setCurrentDrawer] = useState('');
   const [timeLeft, setTimeLeft] = useState(60);
   const [scores, setScores] = useState<CharadesScore[]>([]);
-  const [guesses, setGuesses] = useState<{ player: string; text: string; correct: boolean }[]>([]);
+  const [guesses, setGuesses] = useState<{ player: string; text: string; correct: boolean; close?: boolean }[]>([]);
   const [guessText, setGuessText] = useState('');
   const [gameOver, setGameOver] = useState(false);
   const [roundOver, setRoundOver] = useState(false);
@@ -69,7 +69,7 @@ export function CharadesPage() {
       clearCanvas();
     });
 
-    socket.on('charades:guess_result', (data: { player: string; text: string; correct: boolean }) => {
+    socket.on('charades:guess_result', (data: { player: string; text: string; correct: boolean; close?: boolean }) => {
       setGuesses(prev => [...prev, data]);
     });
 
@@ -88,6 +88,24 @@ export function CharadesPage() {
       setTimeLeft(tl);
     });
 
+    // Joined mid-game: server sends current state so we can sync UI
+    socket.on('charades:current_state', (data: {
+      drawerSocketId: string;
+      drawerName: string;
+      timeLeft: number;
+      scores: CharadesScore[];
+    }) => {
+      setCurrentDrawer(data.drawerName);
+      setIsDrawer(data.drawerSocketId === socket.id);
+      setTimeLeft(data.timeLeft);
+      setScores(data.scores);
+    });
+
+    // Another player joined mid-game
+    socket.on('charades:player_joined', ({ scores: s }: { scores: CharadesScore[] }) => {
+      setScores(s);
+    });
+
     return () => {
       socket.off('charades:new_round');
       socket.off('charades:word');
@@ -97,6 +115,8 @@ export function CharadesPage() {
       socket.off('charades:round_over');
       socket.off('charades:game_over');
       socket.off('charades:timer');
+      socket.off('charades:current_state');
+      socket.off('charades:player_joined');
     };
   }, [socket, code]);
 
@@ -189,6 +209,12 @@ export function CharadesPage() {
     setGuessText('');
   };
 
+  const handleLeave = () => {
+    if (!window.confirm(t('charades.leaveConfirm'))) return;
+    if (socket && code) socket.emit('charades:leave', { code });
+    navigate('/');
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 flex flex-col items-center gap-4">
@@ -202,7 +228,14 @@ export function CharadesPage() {
               <Badge>{t('charades.draw', { word })}</Badge>
             )}
           </div>
-          <div className="text-2xl font-mono font-bold">{timeLeft}s</div>
+          <div className="flex items-center gap-3">
+            <div className="text-2xl font-mono font-bold">{timeLeft}s</div>
+            {!gameOver && (
+              <Button variant="outline" size="sm" onClick={handleLeave}>
+                {t('charades.leaveGame')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Canvas */}
@@ -299,9 +332,14 @@ export function CharadesPage() {
             <ScrollArea className="flex-1 mb-3">
               <div className="space-y-1">
                 {guesses.map((g, i) => (
-                  <div key={i} className={`text-sm ${g.correct ? 'text-green-600 font-bold' : ''}`}>
-                    <span className="font-medium">{g.player}: </span>
-                    <span>{g.correct ? t('charades.correct', { player: g.player }) : g.text}</span>
+                  <div key={i}>
+                    <div className={`text-sm ${g.correct ? 'text-green-600 font-bold' : ''}`}>
+                      <span className="font-medium">{g.player}: </span>
+                      <span>{g.correct ? t('charades.correct', { player: g.player }) : g.text}</span>
+                    </div>
+                    {g.close && !g.correct && (
+                      <div className="text-sm text-orange-500 font-medium pl-2">{t('charades.close')}</div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -1,5 +1,5 @@
 export type GameType = 'chess' | 'checkers' | 'charades';
-export type RoomStatus = 'waiting' | 'in_progress' | 'finished';
+export type RoomStatus = 'waiting' | 'host_away' | 'in_progress' | 'finished';
 
 export interface RoomPlayer {
   userId: string | null;

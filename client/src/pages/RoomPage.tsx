@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Users, Copy, Send, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Room, RoomPlayer } from '@/types/room';
 import type { ChatMessage } from '@/types/game';
 
@@ -22,6 +23,16 @@ export function RoomPage() {
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [hostAwaySeconds, setHostAwaySeconds] = useState<number | null>(null);
+
+  // Countdown timer for host_away banner
+  useEffect(() => {
+    if (hostAwaySeconds === null || hostAwaySeconds <= 0) return;
+    const timer = setInterval(() => {
+      setHostAwaySeconds(s => (s !== null && s > 0) ? s - 1 : null);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [hostAwaySeconds !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!socket || !code) return;
@@ -34,6 +45,35 @@ export function RoomPage() {
       setRoom(prev => prev ? { ...prev, players: prev.players.filter(p => p.socketId !== socketId) } : prev);
     });
 
+    socket.on('room:host_away', ({ expiresIn }: { expiresIn: number }) => {
+      setHostAwaySeconds(expiresIn);
+    });
+
+    socket.on('room:host_returned', () => {
+      setHostAwaySeconds(null);
+    });
+
+    socket.on('room:host_changed', ({ newHostSocketId, newHostName }: { newHostSocketId: string; newHostName: string }) => {
+      setHostAwaySeconds(null);
+      if (newHostSocketId === socket.id) {
+        toast.success('Jesteś teraz hostem pokoju!');
+      } else {
+        toast.info(`Nowy host: ${newHostName}`);
+      }
+      // Refresh room data
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      })
+        .then(res => res.json())
+        .then(data => setRoom(data))
+        .catch(() => {});
+    });
+
+    socket.on('room:closed', () => {
+      toast.error('Pokój został zamknięty');
+      navigate('/');
+    });
+
     socket.on('chat:room_message', (msg: ChatMessage) => {
       setMessages(prev => [...prev, msg]);
     });
@@ -42,6 +82,8 @@ export function RoomPage() {
     socket.on('chess:start', (data: any) => navigate(`/game/chess/${code}`, { state: data }));
     socket.on('checkers:start', (data: any) => navigate(`/game/checkers/${code}`, { state: data }));
     socket.on('charades:start', (data: any) => navigate(`/game/charades/${code}`, { state: data }));
+    // Joined a charades game already in progress
+    socket.on('room:joined_in_progress', () => navigate(`/game/charades/${code}`));
 
     // Fetch room data
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
@@ -54,10 +96,15 @@ export function RoomPage() {
     return () => {
       socket.off('room:player_joined');
       socket.off('room:player_left');
+      socket.off('room:host_away');
+      socket.off('room:host_returned');
+      socket.off('room:host_changed');
+      socket.off('room:closed');
       socket.off('chat:room_message');
       socket.off('chess:start');
       socket.off('checkers:start');
       socket.off('charades:start');
+      socket.off('room:joined_in_progress');
     };
   }, [socket, code]);
 
@@ -89,11 +136,8 @@ export function RoomPage() {
     if (code) navigator.clipboard.writeText(code);
   };
 
-  const isHost = room && (
-    (user && (room.host === user.id || room.players[0]?.userId === user.id)) ||
-    (!user && socket?.id === room.players[0]?.socketId)
-  );
-  const canStart = room && room.players.length >= 2;
+  const isHost = room && socket && room.players[0]?.socketId === socket.id;
+  const canStart = room && room.players.length >= 2 && room.status === 'waiting';
 
   if (!room) {
     return <div className="text-center py-12 text-muted-foreground">{t('app.loading')}</div>;
@@ -124,6 +168,13 @@ export function RoomPage() {
                   {t('lobby.players', { current: room.players.length, max: room.maxPlayers })}
                 </Badge>
               </div>
+
+              {hostAwaySeconds !== null && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                  ⚠️ Host opuścił pokój. Zostanie przekazany lub zamknięty za{' '}
+                  <span className="font-bold">{hostAwaySeconds}s</span>.
+                </div>
+              )}
 
               <div className="space-y-2">
                 {room.players.map((player, i) => (

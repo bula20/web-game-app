@@ -9,7 +9,7 @@ router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     if (authReq.isGuest) {
-      res.json([]);
+      res.json({ games: [], total: 0, page: 1, pages: 0 });
       return;
     }
 

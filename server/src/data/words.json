@@ -7,10 +7,10 @@
     "places": ["beach", "castle", "hospital", "library", "museum", "cinema", "airport", "mountain", "island", "desert", "forest", "zoo", "school", "church", "bridge", "lighthouse", "volcano", "waterfall", "pyramid", "stadium"]
   },
   "pl": {
-    "zwierzeta": ["kot", "pies", "slon", "zyrafa", "pingwin", "delfin", "motyl", "orzel", "waz", "zolw", "krolik", "lew", "niedzwiedz", "malpa", "kon", "ryba", "pajak", "osmiorrnica", "papuga", "kangur", "wieloryb", "zaba", "krokodyl", "sowa", "rekin"],
-    "przedmioty": ["parasol", "rower", "gitara", "aparat", "teleskop", "nozyczki", "drabina", "swieczka", "zegar", "lustro", "balon", "klucz", "mlotek", "poduszka", "puchar", "plecak", "sluchawki", "mikrofon", "okulary", "szczoteczka", "kompas", "latarka", "magnes", "koperta", "walizka"],
-    "czynnosci": ["plywanie", "tanczenie", "gotowanie", "malowanie", "spanie", "bieganie", "wspinanie", "lowienie", "spiewanie", "czytanie", "latanie", "surfowanie", "jazda na nartach", "zonglowanie", "pisanie", "kichanie", "ziewanie", "machanie", "skakanie", "plakanie", "smianie", "kopanie", "wioslarstwo", "boksowanie", "robienie na drutach"],
-    "jedzenie": ["pizza", "hamburger", "spaghetti", "lody", "tort", "sushi", "popcorn", "nalesnik", "kanapka", "paczek", "arbuz", "banan", "czekolada", "ciastko", "frytki", "pierogi", "zupa", "chleb", "ser", "szarlotka", "salatka", "hotdog", "ananas", "winogrona", "babeczka"],
-    "miejsca": ["plaza", "zamek", "szpital", "biblioteka", "muzeum", "kino", "lotnisko", "gora", "wyspa", "pustynia", "las", "zoo", "szkola", "kosciol", "most", "latarnia morska", "wulkan", "wodospad", "piramida", "stadion"]
+    "zwierzeta": ["kot", "pies", "słoń", "żyrafa", "pingwin", "delfin", "motyl", "orzeł", "wąż", "żółw", "królik", "lew", "niedźwiedź", "małpa", "koń", "ryba", "pająk", "ośmiornica", "papuga", "kangur", "wieloryb", "żaba", "krokodyl", "sowa", "rekin"],
+    "przedmioty": ["parasol", "rower", "gitara", "aparat", "teleskop", "nożyczki", "drabina", "świeczka", "zegar", "lustro", "balon", "klucz", "młotek", "poduszka", "puchar", "plecak", "słuchawki", "mikrofon", "okulary", "szczoteczka", "kompas", "latarka", "magnes", "koperta", "walizka"],
+    "czynnosci": ["pływanie", "tańczenie", "gotowanie", "malowanie", "spanie", "bieganie", "wspinanie", "łowienie", "śpiewanie", "czytanie", "latanie", "surfowanie", "jazda na nartach", "żonglowanie", "pisanie", "kichanie", "ziewanie", "machanie", "skakanie", "płakanie", "śmianie", "kopanie", "wioślarstwo", "boksowanie", "robienie na drutach"],
+    "jedzenie": ["pizza", "hamburger", "spaghetti", "lody", "tort", "sushi", "popcorn", "naleśnik", "kanapka", "pączek", "arbuz", "banan", "czekolada", "ciastko", "frytki", "pierogi", "zupa", "chleb", "ser", "szarlotka", "sałatka", "hotdog", "ananas", "winogrona", "babeczka"],
+    "miejsca": ["plaża", "zamek", "szpital", "biblioteka", "muzeum", "kino", "lotnisko", "góra", "wyspa", "pustynia", "las", "zoo", "szkoła", "kościół", "most", "latarnia morska", "wulkan", "wodospad", "piramida", "stadion"]
   }
 }

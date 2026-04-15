@@ -42,7 +42,7 @@ router.post('/register', async (req: Request, res: Response) => {
       isGuest: false,
     });
 
-    const token = generateToken({ userId: user._id.toString(), isGuest: false });
+    const token = generateToken({ userId: user._id.toString(), isGuest: false, username: user.username });
     res.status(201).json({
       token,
       user: { id: user._id, username: user.username, email: user.email },
@@ -74,7 +74,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const token = generateToken({ userId: user._id.toString(), isGuest: false });
+    const token = generateToken({ userId: user._id.toString(), isGuest: false, username: user.username });
     res.json({
       token,
       user: { id: user._id, username: user.username, email: user.email },
@@ -121,7 +121,7 @@ router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: `${env.CLIENT_URL}/login?error=google_auth_failed` }),
   (req: Request, res: Response) => {
     const user = req.user as any;
-    const token = generateToken({ userId: user._id.toString(), isGuest: false });
+    const token = generateToken({ userId: user._id.toString(), isGuest: false, username: user.username });
     res.redirect(`${env.CLIENT_URL}/auth/callback?token=${token}`);
   }
 );

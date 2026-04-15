@@ -24,6 +24,7 @@ interface ChessGameState {
   startedAt: number;
   lastMoveAt: number;
   moves: string[]; // SAN notation
+  roomId: unknown;
 }
 
 const activeGames = new Map<string, ChessGameState>();
@@ -56,6 +57,7 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
         startedAt: Date.now(),
         lastMoveAt: Date.now(),
         moves: [],
+        roomId: room._id,
       };
 
       activeGames.set(code, state);
@@ -204,7 +206,7 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
   try {
     const duration = Math.floor((Date.now() - state.startedAt) / 1000);
     await Game.create({
-      roomId: code,
+      roomId: state.roomId,
       gameType: 'chess',
       players: [
         { userId: state.white.userId, displayName: state.white.displayName },

@@ -14,6 +14,7 @@ export interface JwtPayload {
   userId: string;
   isGuest: boolean;
   guestName?: string;
+  username?: string;
 }
 
 export function generateToken(payload: JwtPayload): string {

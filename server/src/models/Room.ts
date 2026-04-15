@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export type GameType = 'chess' | 'checkers' | 'charades';
-export type RoomStatus = 'waiting' | 'in_progress' | 'finished';
+export type RoomStatus = 'waiting' | 'host_away' | 'in_progress' | 'finished';
 
 export interface IRoomPlayer {
   userId: Types.ObjectId | null;
@@ -18,6 +18,7 @@ export interface IRoom extends Document {
   maxPlayers: number;
   status: RoomStatus;
   timerMinutes: number;
+  hostDisconnectedAt: Date | null;
   createdAt: Date;
 }
 
@@ -34,8 +35,9 @@ const roomSchema = new Schema<IRoom>({
   host: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   players: [roomPlayerSchema],
   maxPlayers: { type: Number, required: true, min: 2, max: 12 },
-  status: { type: String, enum: ['waiting', 'in_progress', 'finished'], default: 'waiting' },
+  status: { type: String, enum: ['waiting', 'host_away', 'in_progress', 'finished'], default: 'waiting' },
   timerMinutes: { type: Number, default: 10 },
+  hostDisconnectedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 roomSchema.index({ gameType: 1, isPublic: 1, status: 1 });

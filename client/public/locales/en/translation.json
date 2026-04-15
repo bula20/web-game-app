@@ -72,10 +72,13 @@
     "draw": "Draw: {{word}}",
     "guess": "Type your guess...",
     "correct": "{{player}} guessed correctly!",
+    "close": "Close...",
     "roundOver": "Round over! The word was: {{word}}",
     "scores": "Scores",
     "yourTurnToDraw": "Your turn to draw!",
-    "guessing": "Guess what's being drawn..."
+    "guessing": "Guess what's being drawn...",
+    "leaveGame": "Leave Game",
+    "leaveConfirm": "Are you sure you want to leave the game?"
   },
   "friends": {
     "title": "Friends",

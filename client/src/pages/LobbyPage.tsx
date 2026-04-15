@@ -37,7 +37,18 @@ export function LobbyPage() {
       setRooms(prev => [room, ...prev]);
     });
     socket.on('lobby:room_updated', (room: Room) => {
-      setRooms(prev => prev.map(r => r._id === room._id ? room : r));
+      // For charades in_progress rooms with open slots — keep/add them in the list
+      const isJoinableCharades = room.gameType === 'charades'
+        && room.status === 'in_progress'
+        && room.players.length < room.maxPlayers;
+      const isJoinable = room.status === 'waiting' || room.status === 'host_away' || isJoinableCharades;
+
+      setRooms(prev => {
+        const exists = prev.some(r => r._id === room._id);
+        if (!isJoinable) return prev.filter(r => r._id !== room._id);
+        if (exists) return prev.map(r => r._id === room._id ? room : r);
+        return [room, ...prev];
+      });
     });
     socket.on('lobby:room_removed', ({ roomId }: { roomId: string }) => {
       setRooms(prev => prev.filter(r => r._id !== roomId));
@@ -45,6 +56,10 @@ export function LobbyPage() {
 
     socket.on('room:joined', ({ room }: { room: Room }) => {
       navigate(`/room/${room.code}`);
+    });
+
+    socket.on('room:joined_in_progress', ({ room }: { room: Room }) => {
+      navigate(`/game/charades/${room.code}`);
     });
 
     socket.on('room:error', ({ message }: { message: string }) => {
@@ -58,6 +73,7 @@ export function LobbyPage() {
       socket.off('lobby:room_updated');
       socket.off('lobby:room_removed');
       socket.off('room:joined');
+      socket.off('room:joined_in_progress');
       socket.off('room:error');
     };
   }, [socket, gameType]);

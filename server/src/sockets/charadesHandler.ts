@@ -22,29 +22,58 @@ interface CharadesPlayer {
   displayName: string;
   points: number;
   hasGuessedCorrectly: boolean;
+  drawCount: number; // how many times this player has drawn
 }
 
 interface CharadesGameState {
   players: CharadesPlayer[];
+  // Index into players[] of who is currently drawing
   currentDrawerIndex: number;
   currentWord: string;
-  round: number;
-  totalRounds: number;
+  // Total full cycles (each player draws once = 1 cycle) to play
+  totalCycles: number;
+  // How many full cycles have been completed
+  completedCycles: number;
+  // How many players have drawn in the current cycle
+  drawnThisCycle: number;
   timeLeft: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
   lang: string;
   usedWords: Set<string>;
+  roomId: unknown;
+  roundInProgress: boolean;
 }
 
 const activeGames = new Map<string, CharadesGameState>();
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function isClose(guess: string, word: string): boolean {
+  const g = guess.trim().toLowerCase();
+  const w = word.toLowerCase();
+  if (g === w) return false;
+  const dist = levenshtein(g, w);
+  return dist <= 2 || dist <= Math.floor(w.length * 0.3);
+}
 
 function getRandomWord(lang: string, usedWords: Set<string>): string {
   const langWords = wordBank[lang] || wordBank['en'];
   const allWords = Object.values(langWords).flat();
   const available = allWords.filter(w => !usedWords.has(w));
   if (available.length === 0) {
-    // Reset if all words used
     usedWords.clear();
     return allWords[Math.floor(Math.random() * allWords.length)];
   }
@@ -58,6 +87,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     if (room.players[0].socketId !== socket.id) return;
     if (activeGames.has(code)) return;
 
+    // Keep room in_progress but still joinable (lobby handler will handle visibility)
     room.status = 'in_progress';
     await room.save();
 
@@ -67,26 +97,29 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
       displayName: p.displayName,
       points: 0,
       hasGuessedCorrectly: false,
+      drawCount: 0,
     }));
 
     const state: CharadesGameState = {
       players,
       currentDrawerIndex: 0,
       currentWord: '',
-      round: 0,
-      totalRounds: players.length * 2, // each player draws twice
+      totalCycles: 2, // each player draws twice total
+      completedCycles: 0,
+      drawnThisCycle: 0,
       timeLeft: 0,
       timerInterval: null,
       startedAt: Date.now(),
-      lang: 'pl', // default to Polish
+      lang: 'pl',
       usedWords: new Set(),
+      roomId: room._id,
+      roundInProgress: false,
     };
 
     activeGames.set(code, state);
 
     io.to(`room:${code}`).emit('charades:start', {
       players: players.map(p => ({ displayName: p.displayName, points: 0 })),
-      roundCount: state.totalRounds,
     });
 
     startNewRound(io, code);
@@ -112,17 +145,15 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
 
     const playerIndex = state.players.findIndex(p => p.socketId === socket.id);
     if (playerIndex === -1) return;
-    if (playerIndex === state.currentDrawerIndex) return; // drawer can't guess
-    if (state.players[playerIndex].hasGuessedCorrectly) return; // already guessed
+    if (playerIndex === state.currentDrawerIndex) return;
+    if (state.players[playerIndex].hasGuessedCorrectly) return;
 
     const isCorrect = text.trim().toLowerCase() === state.currentWord.toLowerCase();
 
     if (isCorrect) {
       state.players[playerIndex].hasGuessedCorrectly = true;
-      // Points: more time left = more points
       const points = Math.max(10, Math.floor(state.timeLeft * 1.5));
       state.players[playerIndex].points += points;
-      // Drawer also gets points
       state.players[state.currentDrawerIndex].points += Math.floor(points / 2);
 
       io.to(`room:${code}`).emit('charades:guess_result', {
@@ -131,7 +162,6 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
         correct: true,
       });
 
-      // Check if all guessers have guessed
       const allGuessed = state.players.every((p, i) =>
         i === state.currentDrawerIndex || p.hasGuessedCorrectly
       );
@@ -143,41 +173,99 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
         player: state.players[playerIndex].displayName,
         text,
         correct: false,
+        close: isClose(text, state.currentWord),
       });
     }
   });
 
+
+  socket.on('charades:leave', ({ code }: { code: string }) => {
+    handlePlayerLeave(io, socket.id, code);
+  });
+
   socket.on('disconnect', () => {
-    for (const [code, state] of activeGames) {
-      const playerIndex = state.players.findIndex(p => p.socketId === socket.id);
-      if (playerIndex !== -1) {
-        state.players.splice(playerIndex, 1);
-        if (state.players.length < 2) {
-          endCharadesGame(io, code);
-        } else if (playerIndex === state.currentDrawerIndex) {
-          // Current drawer left, skip to next round
-          state.currentDrawerIndex = state.currentDrawerIndex % state.players.length;
-          endRound(io, code);
-        }
-      }
+    for (const [code] of activeGames) {
+      handlePlayerLeave(io, socket.id, code);
     }
   });
+}
+
+function handlePlayerLeave(io: Server, socketId: string, code: string) {
+  const state = activeGames.get(code);
+  if (!state) return;
+  const playerIndex = state.players.findIndex(p => p.socketId === socketId);
+  if (playerIndex === -1) return;
+
+  const wasDrawer = playerIndex === state.currentDrawerIndex;
+  state.players.splice(playerIndex, 1);
+
+  // Adjust currentDrawerIndex after removal
+  if (playerIndex < state.currentDrawerIndex) {
+    state.currentDrawerIndex--;
+  } else if (playerIndex === state.currentDrawerIndex) {
+    // Wrap around if needed
+    state.currentDrawerIndex = state.currentDrawerIndex % Math.max(state.players.length, 1);
+  }
+
+  // Update lobby so freed slot shows up
+  Room.findOneAndUpdate(
+    { code },
+    { $pull: { players: { socketId: socketId } } }
+  ).catch(() => {});
+
+  if (state.players.length < 2) {
+    endCharadesGame(io, code);
+    return;
+  }
+
+  if (wasDrawer && state.roundInProgress) {
+    // Skip to next player's turn
+    endRound(io, code);
+  }
+}
+
+function getNextDrawerIndex(state: CharadesGameState): number | null {
+  // Find player who has drawn the fewest times (round-robin by draw count)
+  const minDraws = Math.min(...state.players.map(p => p.drawCount));
+
+  // Among players with min draws, pick the next one after currentDrawerIndex (circular)
+  const candidates = state.players
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.drawCount === minDraws);
+
+  if (candidates.length === 0) return null;
+
+  // Find the first candidate that comes after currentDrawerIndex (wrapping)
+  for (let offset = 1; offset <= state.players.length; offset++) {
+    const idx = (state.currentDrawerIndex + offset) % state.players.length;
+    if (candidates.some(c => c.i === idx)) return idx;
+  }
+
+  return candidates[0].i;
 }
 
 function startNewRound(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
 
-  state.round++;
-  if (state.round > state.totalRounds) {
+  // Check if all players have completed totalCycles rounds
+  const minDraws = Math.min(...state.players.map(p => p.drawCount));
+  if (minDraws >= state.totalCycles) {
     endCharadesGame(io, code);
     return;
   }
 
-  // Reset guesses
-  state.players.forEach(p => { p.hasGuessedCorrectly = false; });
+  const nextDrawerIndex = getNextDrawerIndex(state);
+  if (nextDrawerIndex === null) {
+    endCharadesGame(io, code);
+    return;
+  }
 
-  // Pick word
+  state.currentDrawerIndex = nextDrawerIndex;
+  state.players[nextDrawerIndex].drawCount++;
+  state.players.forEach(p => { p.hasGuessedCorrectly = false; });
+  state.roundInProgress = true;
+
   const word = getRandomWord(state.lang, state.usedWords);
   state.usedWords.add(word);
   state.currentWord = word;
@@ -185,17 +273,14 @@ function startNewRound(io: Server, code: string) {
 
   const drawer = state.players[state.currentDrawerIndex];
 
-  // Notify all players about new round
   io.to(`room:${code}`).emit('charades:new_round', {
     drawer: drawer.socketId,
     drawerName: drawer.displayName,
     timeLeft: 60,
   });
 
-  // Send word only to the drawer
   io.to(drawer.socketId).emit('charades:word', { word, category: '' });
 
-  // Start timer
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = setInterval(() => {
     state.timeLeft -= 1;
@@ -210,6 +295,9 @@ function startNewRound(io: Server, code: string) {
 function endRound(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
+  if (!state.roundInProgress) return;
+
+  state.roundInProgress = false;
 
   if (state.timerInterval) {
     clearInterval(state.timerInterval);
@@ -225,10 +313,6 @@ function endRound(io: Server, code: string) {
     })),
   });
 
-  // Next drawer
-  state.currentDrawerIndex = (state.currentDrawerIndex + 1) % state.players.length;
-
-  // Start next round after a delay
   setTimeout(() => {
     startNewRound(io, code);
   }, 5000);
@@ -237,6 +321,8 @@ function endRound(io: Server, code: string) {
 async function endCharadesGame(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
+
+  activeGames.delete(code);
 
   if (state.timerInterval) clearInterval(state.timerInterval);
 
@@ -248,12 +334,11 @@ async function endCharadesGame(io: Server, code: string) {
 
   io.to(`room:${code}`).emit('charades:game_over', { scores: finalScores });
 
-  // Save to DB
   try {
     const duration = Math.floor((Date.now() - state.startedAt) / 1000);
     const sortedScores = [...finalScores].sort((a, b) => b.points - a.points);
     await Game.create({
-      roomId: code,
+      roomId: state.roomId,
       gameType: 'charades',
       players: state.players.map(p => ({ userId: p.userId, displayName: p.displayName })),
       winner: sortedScores[0]?.userId || null,
@@ -268,6 +353,38 @@ async function endCharadesGame(io: Server, code: string) {
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
   } catch { /* ignore */ }
+}
 
-  activeGames.delete(code);
+// Called by lobbyHandler when a player joins a charades game already in progress
+export function addPlayerToCharadesGame(io: Server, socket: AuthenticatedSocket, code: string) {
+  const state = activeGames.get(code);
+  if (!state) return;
+
+  const alreadyIn = state.players.some(p => p.socketId === socket.id);
+  if (alreadyIn) return;
+
+  const newPlayer: CharadesPlayer = {
+    socketId: socket.id,
+    userId: socket.isGuest ? null : socket.userId || null,
+    displayName: socket.displayName || 'Unknown',
+    points: 0,
+    hasGuessedCorrectly: false,
+    drawCount: 0,
+  };
+
+  state.players.push(newPlayer);
+
+  // Send current game state to the joining player
+  const currentDrawer = state.players[state.currentDrawerIndex];
+  socket.emit('charades:current_state', {
+    drawerSocketId: currentDrawer.socketId,
+    drawerName: currentDrawer.displayName,
+    timeLeft: state.timeLeft,
+    scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+  });
+
+  io.to(`room:${code}`).emit('charades:player_joined', {
+    displayName: newPlayer.displayName,
+    scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+  });
 }

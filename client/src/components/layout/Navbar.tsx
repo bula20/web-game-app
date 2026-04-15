@@ -26,7 +26,7 @@ export function Navbar() {
             <Gamepad2 className="h-6 w-6 text-primary" />
             <span>{t('app.title')}</span>
           </Link>
-          {user && (
+          {user && !user.isGuest && (
             <Link to="/history" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <History className="h-4 w-4" />
               {t('nav.history')}
