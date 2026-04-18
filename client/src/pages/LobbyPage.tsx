@@ -26,6 +26,8 @@ export function LobbyPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [timerMinutes, setTimerMinutes] = useState(10);
+  const [rounds, setRounds] = useState(3);
+  const [drawingTime, setDrawingTime] = useState(60);
 
   useEffect(() => {
     if (!socket || !gameType) return;
@@ -84,7 +86,9 @@ export function LobbyPage() {
       gameType: gameType as GameType,
       isPublic,
       maxPlayers: gameType === 'charades' ? maxPlayers : 2,
-      timerMinutes,
+      ...(gameType === 'charades'
+        ? { rounds, drawingTime }
+        : { timerMinutes }),
     });
     setShowCreate(false);
   };
@@ -188,25 +192,48 @@ export function LobbyPage() {
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('lobby.timerMinutes')}</Label>
-              <Input
-                type="number"
-                min={1}
-                max={60}
-                value={timerMinutes}
-                onChange={e => setTimerMinutes(Number(e.target.value))}
-              />
-            </div>
-            {gameType === 'charades' && (
+            {gameType === 'charades' ? (
+              <>
+                <div className="space-y-2">
+                  <Label>{t('lobby.maxPlayers')}</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={12}
+                    value={maxPlayers}
+                    onChange={e => setMaxPlayers(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('lobby.rounds')}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={rounds}
+                    onChange={e => setRounds(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('lobby.drawingTime')}</Label>
+                  <Input
+                    type="number"
+                    min={30}
+                    max={120}
+                    value={drawingTime}
+                    onChange={e => setDrawingTime(Number(e.target.value))}
+                  />
+                </div>
+              </>
+            ) : (
               <div className="space-y-2">
-                <Label>{t('lobby.maxPlayers')}</Label>
+                <Label>{t('lobby.timerMinutes')}</Label>
                 <Input
                   type="number"
-                  min={2}
-                  max={12}
-                  value={maxPlayers}
-                  onChange={e => setMaxPlayers(Number(e.target.value))}
+                  min={1}
+                  max={60}
+                  value={timerMinutes}
+                  onChange={e => setTimerMinutes(Number(e.target.value))}
                 />
               </div>
             )}

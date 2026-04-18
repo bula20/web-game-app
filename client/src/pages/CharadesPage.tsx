@@ -38,21 +38,52 @@ export function CharadesPage() {
   const [lastWord, setLastWord] = useState('');
   const [drawColor, setDrawColor] = useState('#000000');
   const [drawWidth, setDrawWidth] = useState(4);
+  const [currentCycle, setCurrentCycle] = useState(1);
+  const [totalCycles, setTotalCycles] = useState<number | null>(null);
 
   // Drawing state
   const isDrawingRef = useRef(false);
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [guesses]);
 
   useEffect(() => {
     if (!socket || !code) return;
 
-    socket.on('charades:new_round', (data: { drawer: string; drawerName: string; timeLeft: number }) => {
+    // Request current game state on mount — handles the race where charades:new_round
+    // fires before CharadesPage has finished mounting and registered its listeners.
+    socket.emit('charades:get_state', { code });
+
+    socket.on('charades:state', (data: {
+      drawerSocketId: string;
+      drawerName: string;
+      timeLeft: number;
+      scores: CharadesScore[];
+      word?: string;
+      cycle?: number;
+      totalCycles?: number;
+    }) => {
+      setCurrentDrawer(data.drawerName);
+      setIsDrawer(data.drawerSocketId === socket.id);
+      setTimeLeft(data.timeLeft);
+      setScores(data.scores);
+      if (data.word) setWord(data.word);
+      if (data.cycle) setCurrentCycle(data.cycle);
+      if (data.totalCycles) setTotalCycles(data.totalCycles);
+    });
+
+    socket.on('charades:new_round', (data: { drawer: string; drawerName: string; timeLeft: number; cycle?: number; totalCycles?: number }) => {
       setCurrentDrawer(data.drawerName);
       setIsDrawer(data.drawer === socket.id);
       setTimeLeft(data.timeLeft);
       setRoundOver(false);
       setGuesses([]);
       clearCanvas();
+      if (data.cycle) setCurrentCycle(data.cycle);
+      if (data.totalCycles) setTotalCycles(data.totalCycles);
     });
 
     socket.on('charades:word', ({ word: w }: { word: string }) => {
@@ -113,6 +144,7 @@ export function CharadesPage() {
       socket.off('charades:round_over');
       socket.off('charades:game_over');
       socket.off('charades:timer');
+      socket.off('charades:state');
       socket.off('charades:current_state');
       socket.off('charades:player_joined');
     };
@@ -227,6 +259,11 @@ export function CharadesPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {totalCycles !== null && (
+              <Badge variant="secondary">
+                {t('charades.round', { current: currentCycle, total: totalCycles })}
+              </Badge>
+            )}
             <div className="text-2xl font-mono font-bold">{timeLeft}s</div>
             {!gameOver && (
               <Button variant="outline" size="sm" onClick={handleLeave}>
@@ -340,6 +377,7 @@ export function CharadesPage() {
                     )}
                   </div>
                 ))}
+                <div ref={chatEndRef} />
               </div>
             </ScrollArea>
             {!isDrawer && !gameOver && (

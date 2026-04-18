@@ -61,6 +61,8 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     isPublic: boolean;
     maxPlayers?: number;
     timerMinutes?: number;
+    rounds?: number;
+    drawingTime?: number;
   }) => {
     try {
       const code = nanoid(6).toUpperCase();
@@ -80,6 +82,12 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         }],
         maxPlayers,
         timerMinutes: data.timerMinutes || 10,
+        rounds: data.gameType === 'charades'
+          ? Math.min(Math.max(data.rounds ?? 3, 1), 10)
+          : 1,
+        drawingTime: data.gameType === 'charades'
+          ? Math.min(Math.max(data.drawingTime ?? 60, 30), 120)
+          : 60,
         status: 'waiting',
       });
 

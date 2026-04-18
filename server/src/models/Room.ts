@@ -18,6 +18,8 @@ export interface IRoom extends Document {
   maxPlayers: number;
   status: RoomStatus;
   timerMinutes: number;
+  rounds: number;
+  drawingTime: number;
   hostDisconnectedAt: Date | null;
   createdAt: Date;
 }
@@ -37,6 +39,8 @@ const roomSchema = new Schema<IRoom>({
   maxPlayers: { type: Number, required: true, min: 2, max: 12 },
   status: { type: String, enum: ['waiting', 'host_away', 'in_progress', 'finished'], default: 'waiting' },
   timerMinutes: { type: Number, default: 10 },
+  rounds: { type: Number, default: 3 },
+  drawingTime: { type: Number, default: 60 },
   hostDisconnectedAt: { type: Date, default: null },
 }, { timestamps: true });
 

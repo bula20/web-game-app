@@ -17,5 +17,7 @@ export interface Room {
   maxPlayers: number;
   status: RoomStatus;
   timerMinutes: number;
+  rounds?: number;
+  drawingTime?: number;
   createdAt: string;
 }

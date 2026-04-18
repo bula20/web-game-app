@@ -42,11 +42,16 @@ export function CheckersPage() {
   playerColorRef.current = playerColor;
 
   const historyEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll move history to bottom
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [moveHistory]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   useEffect(() => {
     if (!socket || !code) return;
@@ -305,6 +310,7 @@ export function CheckersPage() {
                     <span className="text-muted-foreground">{msg.text}</span>
                   </div>
                 ))}
+                <div ref={chatEndRef} />
               </div>
             </ScrollArea>
             <div className="flex gap-2">

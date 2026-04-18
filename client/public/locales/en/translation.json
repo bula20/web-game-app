@@ -50,6 +50,8 @@
     "noRooms": "No rooms available. Create one!",
     "timerMinutes": "Timer (minutes)",
     "maxPlayers": "Max Players",
+    "rounds": "Number of rounds",
+    "drawingTime": "Drawing time (seconds)",
     "visibility": "Visibility",
     "create": "Create"
   },
@@ -78,7 +80,8 @@
     "yourTurnToDraw": "Your turn to draw!",
     "guessing": "Guess what's being drawn...",
     "leaveGame": "Leave Game",
-    "leaveConfirm": "Are you sure you want to leave the game?"
+    "leaveConfirm": "Are you sure you want to leave the game?",
+    "round": "Round {{current}}/{{total}}"
   },
   "friends": {
     "title": "Friends",
@@ -106,6 +109,8 @@
     "start": "Start Game",
     "leave": "Leave Room",
     "host": "Host",
-    "player": "Player"
+    "player": "Player",
+    "rounds": "{{rounds}} rounds",
+    "drawingTime": "{{seconds}}s/turn"
   }
 }

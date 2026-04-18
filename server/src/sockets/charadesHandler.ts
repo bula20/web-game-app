@@ -34,6 +34,10 @@ interface CharadesGameState {
   currentWord: string;
   // Total full cycles (each player draws once = 1 cycle) to play
   totalCycles: number;
+  // Which cycle we are currently in (1-based)
+  currentCycle: number;
+  // Seconds per drawing turn
+  drawingTime: number;
   timeLeft: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
@@ -103,7 +107,9 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
       currentDrawerIndex: 0,
       nextDrawerSlot: 0, // host (index 0) draws first
       currentWord: '',
-      totalCycles: 2, // each player draws twice total
+      totalCycles: room.rounds ?? 3,
+      currentCycle: 1,
+      drawingTime: room.drawingTime ?? 60,
       timeLeft: 0,
       timerInterval: null,
       startedAt: Date.now(),
@@ -120,6 +126,22 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     });
 
     startNewRound(io, code);
+  });
+
+  socket.on('charades:get_state', ({ code }: { code: string }) => {
+    const state = activeGames.get(code);
+    if (!state) return;
+    const drawer = state.players[state.currentDrawerIndex];
+    socket.emit('charades:state', {
+      drawerSocketId: drawer.socketId,
+      drawerName: drawer.displayName,
+      timeLeft: state.timeLeft,
+      scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+      // Only send the word to the drawer
+      word: drawer.socketId === socket.id ? state.currentWord : undefined,
+      cycle: state.currentCycle,
+      totalCycles: state.totalCycles,
+    });
   });
 
   socket.on('charades:draw', ({ code, stroke }: { code: string; stroke: any }) => {
@@ -243,20 +265,26 @@ function startNewRound(io: Server, code: string) {
   state.currentDrawerIndex = state.nextDrawerSlot;
   state.nextDrawerSlot = (state.nextDrawerSlot + 1) % state.players.length;
   state.players[state.currentDrawerIndex].drawCount++;
+  // When the slot wraps back to 0 a full cycle has been completed — advance cycle counter
+  if (state.nextDrawerSlot === 0) {
+    state.currentCycle++;
+  }
   state.players.forEach(p => { p.hasGuessedCorrectly = false; });
   state.roundInProgress = true;
 
   const word = getRandomWord(state.lang, state.usedWords);
   state.usedWords.add(word);
   state.currentWord = word;
-  state.timeLeft = 60;
+  state.timeLeft = state.drawingTime;
 
   const drawer = state.players[state.currentDrawerIndex];
 
   io.to(`room:${code}`).emit('charades:new_round', {
     drawer: drawer.socketId,
     drawerName: drawer.displayName,
-    timeLeft: 60,
+    timeLeft: state.drawingTime,
+    cycle: state.currentCycle,
+    totalCycles: state.totalCycles,
   });
 
   io.to(drawer.socketId).emit('charades:word', { word, category: '' });

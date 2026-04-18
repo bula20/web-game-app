@@ -50,6 +50,8 @@
     "noRooms": "Brak dostępnych pokojów. Utwórz nowy!",
     "timerMinutes": "Timer (minuty)",
     "maxPlayers": "Maks. graczy",
+    "rounds": "Liczba rund",
+    "drawingTime": "Czas rysowania (sekundy)",
     "visibility": "Widoczność",
     "create": "Utwórz"
   },
@@ -78,7 +80,8 @@
     "yourTurnToDraw": "Twoja kolej na rysowanie!",
     "guessing": "Zgadnij co jest rysowane...",
     "leaveGame": "Opuść grę",
-    "leaveConfirm": "Czy na pewno chcesz opuścić rozgrywkę?"
+    "leaveConfirm": "Czy na pewno chcesz opuścić rozgrywkę?",
+    "round": "Runda {{current}}/{{total}}"
   },
   "friends": {
     "title": "Znajomi",
@@ -106,6 +109,8 @@
     "start": "Rozpocznij grę",
     "leave": "Opuść pokój",
     "host": "Host",
-    "player": "Gracz"
+    "player": "Gracz",
+    "rounds": "{{rounds}} rund",
+    "drawingTime": "{{seconds}}s/tura"
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
@@ -24,6 +24,11 @@ export function Sidebar() {
   const [chatWith, setChatWith] = useState<Friend | null>(null);
   const [chatMessages, setChatMessages] = useState<{ from: string; fromId: string; text: string; timestamp: string }[]>([]);
   const [messageText, setMessageText] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   useEffect(() => {
     if (!user || user.isGuest) return;
@@ -180,6 +185,7 @@ export function Sidebar() {
                       </div>
                     </div>
                   ))}
+                  <div ref={chatEndRef} />
                 </div>
               </ScrollArea>
               <div className="p-3 border-t flex gap-2">

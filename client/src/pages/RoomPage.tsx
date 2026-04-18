@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
@@ -24,6 +24,11 @@ export function RoomPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [hostAwaySeconds, setHostAwaySeconds] = useState<number | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Countdown timer for host_away banner
   useEffect(() => {
@@ -162,11 +167,21 @@ export function RoomPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <Badge>{room.gameType}</Badge>
                 <Badge variant="outline">
                   {t('lobby.players', { current: room.players.length, max: room.maxPlayers })}
                 </Badge>
+                {room.gameType === 'charades' && (
+                  <>
+                    <Badge variant="outline">
+                      {t('room.rounds', { rounds: room.rounds ?? 3 })}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t('room.drawingTime', { seconds: room.drawingTime ?? 60 })}
+                    </Badge>
+                  </>
+                )}
               </div>
 
               {hostAwaySeconds !== null && (
@@ -220,6 +235,7 @@ export function RoomPage() {
                   <span className="text-muted-foreground">{msg.text}</span>
                 </div>
               ))}
+              <div ref={chatEndRef} />
             </div>
           </ScrollArea>
           <div className="flex gap-2">
