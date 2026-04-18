@@ -296,8 +296,8 @@ export function CheckersPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Chat</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 mb-3">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 pb-3">
+            <ScrollArea className="flex-1 min-h-0 mb-3">
               <div className="space-y-2">
                 {messages.map((msg, i) => (
                   <div key={i} className="text-sm">

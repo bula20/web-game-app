@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
-import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Eraser, Palette } from 'lucide-react';
+import { Send, Eraser } from 'lucide-react';
 import type { Stroke } from '@/types/game';
 
 interface CharadesScore {
@@ -24,7 +23,6 @@ export function CharadesPage() {
   const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const { socket } = useSocket();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -328,8 +326,8 @@ export function CharadesPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Chat</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 mb-3">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 pb-3">
+            <ScrollArea className="flex-1 min-h-0 mb-3">
               <div className="space-y-1">
                 {guesses.map((g, i) => (
                   <div key={i}>

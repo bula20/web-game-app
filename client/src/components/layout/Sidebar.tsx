@@ -164,14 +164,14 @@ export function Sidebar() {
           </div>
 
           {chatWith ? (
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col flex-1 overflow-hidden min-h-0">
               <div className="flex items-center gap-2 p-3 border-b">
                 <Button variant="ghost" size="sm" onClick={() => setChatWith(null)}>
                   &larr;
                 </Button>
                 <span className="font-medium">{chatWith.username}</span>
               </div>
-              <ScrollArea className="flex-1 p-3">
+              <ScrollArea className="flex-1 min-h-0 p-3">
                 <div className="space-y-2">
                   {chatMessages.map((msg, i) => (
                     <div key={i} className={`flex flex-col ${msg.fromId === user?.id ? 'items-end' : 'items-start'}`}>

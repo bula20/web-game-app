@@ -29,13 +29,11 @@ interface CharadesGameState {
   players: CharadesPlayer[];
   // Index into players[] of who is currently drawing
   currentDrawerIndex: number;
+  // Index of the player who draws NEXT (advances round-robin through players[])
+  nextDrawerSlot: number;
   currentWord: string;
   // Total full cycles (each player draws once = 1 cycle) to play
   totalCycles: number;
-  // How many full cycles have been completed
-  completedCycles: number;
-  // How many players have drawn in the current cycle
-  drawnThisCycle: number;
   timeLeft: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
@@ -103,10 +101,9 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     const state: CharadesGameState = {
       players,
       currentDrawerIndex: 0,
+      nextDrawerSlot: 0, // host (index 0) draws first
       currentWord: '',
       totalCycles: 2, // each player draws twice total
-      completedCycles: 0,
-      drawnThisCycle: 0,
       timeLeft: 0,
       timerInterval: null,
       startedAt: Date.now(),
@@ -203,8 +200,15 @@ function handlePlayerLeave(io: Server, socketId: string, code: string) {
   if (playerIndex < state.currentDrawerIndex) {
     state.currentDrawerIndex--;
   } else if (playerIndex === state.currentDrawerIndex) {
-    // Wrap around if needed
     state.currentDrawerIndex = state.currentDrawerIndex % Math.max(state.players.length, 1);
+  }
+
+  // Adjust nextDrawerSlot the same way
+  if (state.players.length > 0) {
+    if (playerIndex < state.nextDrawerSlot) {
+      state.nextDrawerSlot--;
+    }
+    state.nextDrawerSlot = state.nextDrawerSlot % state.players.length;
   }
 
   // Update lobby so freed slot shows up
@@ -224,26 +228,6 @@ function handlePlayerLeave(io: Server, socketId: string, code: string) {
   }
 }
 
-function getNextDrawerIndex(state: CharadesGameState): number | null {
-  // Find player who has drawn the fewest times (round-robin by draw count)
-  const minDraws = Math.min(...state.players.map(p => p.drawCount));
-
-  // Among players with min draws, pick the next one after currentDrawerIndex (circular)
-  const candidates = state.players
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => p.drawCount === minDraws);
-
-  if (candidates.length === 0) return null;
-
-  // Find the first candidate that comes after currentDrawerIndex (wrapping)
-  for (let offset = 1; offset <= state.players.length; offset++) {
-    const idx = (state.currentDrawerIndex + offset) % state.players.length;
-    if (candidates.some(c => c.i === idx)) return idx;
-  }
-
-  return candidates[0].i;
-}
-
 function startNewRound(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
@@ -255,14 +239,10 @@ function startNewRound(io: Server, code: string) {
     return;
   }
 
-  const nextDrawerIndex = getNextDrawerIndex(state);
-  if (nextDrawerIndex === null) {
-    endCharadesGame(io, code);
-    return;
-  }
-
-  state.currentDrawerIndex = nextDrawerIndex;
-  state.players[nextDrawerIndex].drawCount++;
+  // Always take the next slot in strict order: 0, 1, 2, ..., N-1, 0, 1, ...
+  state.currentDrawerIndex = state.nextDrawerSlot;
+  state.nextDrawerSlot = (state.nextDrawerSlot + 1) % state.players.length;
+  state.players[state.currentDrawerIndex].drawCount++;
   state.players.forEach(p => { p.hasGuessedCorrectly = false; });
   state.roundInProgress = true;
 
@@ -363,13 +343,16 @@ export function addPlayerToCharadesGame(io: Server, socket: AuthenticatedSocket,
   const alreadyIn = state.players.some(p => p.socketId === socket.id);
   if (alreadyIn) return;
 
+  // Give the new player the same drawCount as the least-drawn player,
+  // so they join the rotation at the start of the next cycle, not mid-cycle.
+  const minDraws = Math.min(...state.players.map(p => p.drawCount));
   const newPlayer: CharadesPlayer = {
     socketId: socket.id,
     userId: socket.isGuest ? null : socket.userId || null,
     displayName: socket.displayName || 'Unknown',
     points: 0,
     hasGuessedCorrectly: false,
-    drawCount: 0,
+    drawCount: minDraws,
   };
 
   state.players.push(newPlayer);
