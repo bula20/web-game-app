@@ -8,6 +8,7 @@ export interface IUser extends Document {
   googleId?: string;
   isGuest: boolean;
   friends: Types.ObjectId[];
+  activeRoomCode: string | null;
   createdAt: Date;
 }
 
@@ -18,6 +19,7 @@ const userSchema = new Schema<IUser>({
   googleId: { type: String, sparse: true },
   isGuest: { type: Boolean, default: false },
   friends: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  activeRoomCode: { type: String, default: null },
 }, { timestamps: true });
 
 userSchema.index({ username: 'text' });

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Eraser } from 'lucide-react';
+import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { Stroke } from '@/types/game';
 
 interface CharadesScore {
@@ -248,6 +249,9 @@ export function CharadesPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 flex flex-col items-center gap-4">
+        <div className="w-full">
+          <DisconnectBanner />
+        </div>
         {/* Header */}
         <div className="flex items-center gap-4 w-full justify-between">
           <div className="flex items-center gap-2">

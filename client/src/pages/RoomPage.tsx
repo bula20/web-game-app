@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Users, Copy, Send, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
+import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { Room, RoomPlayer } from '@/types/room';
 import type { ChatMessage } from '@/types/game';
 
@@ -190,6 +191,8 @@ export function RoomPage() {
                   <span className="font-bold">{hostAwaySeconds}s</span>.
                 </div>
               )}
+
+              <DisconnectBanner />
 
               <div className="space-y-2">
                 {room.players.map((player, i) => (

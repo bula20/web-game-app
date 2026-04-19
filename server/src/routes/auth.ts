@@ -110,6 +110,7 @@ router.get('/me', authMiddleware, (req: Request, res: Response) => {
       username: authReq.user.username,
       email: authReq.user.email,
       isGuest: false,
+      activeRoomCode: authReq.user.activeRoomCode ?? null,
     });
   }
 });

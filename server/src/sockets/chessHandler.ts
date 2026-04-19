@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
 import { Game } from '../models/Game.js';
+import { User } from '../models/User.js';
 import {
   createInitialState,
   getValidMoves,
@@ -11,23 +12,74 @@ import {
   algebraicToSquare,
   squareToAlgebraic,
   type ChessState,
-  type Board,
 } from '../game-logic/chess.js';
+import {
+  registerGameDisconnectHandler,
+  registerGameReconnectHandler,
+} from './presenceHandler.js';
+
+interface ChessPlayer {
+  socketId: string;
+  userId: string | null;
+  displayName: string;
+}
 
 interface ChessGameState {
   gameState: ChessState;
-  white: { socketId: string; userId: string | null; displayName: string };
-  black: { socketId: string; userId: string | null; displayName: string };
+  white: ChessPlayer;
+  black: ChessPlayer;
   timeWhite: number;
   timeBlack: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
   lastMoveAt: number;
-  moves: string[]; // SAN notation
+  moves: string[];
   roomId: unknown;
 }
 
 const activeGames = new Map<string, ChessGameState>();
+
+function playerColor(state: ChessGameState, socket: AuthenticatedSocket): 'w' | 'b' | null {
+  const uid = socket.userId;
+  if (uid) {
+    if (state.white.userId === uid) return 'w';
+    if (state.black.userId === uid) return 'b';
+  }
+  if (state.white.socketId === socket.id) return 'w';
+  if (state.black.socketId === socket.id) return 'b';
+  return null;
+}
+
+// Register presence callbacks once at module load
+registerGameDisconnectHandler('chess', (io, code, userId) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  let winner: 'white' | 'black' | null = null;
+  if (state.white.userId === userId) winner = 'black';
+  else if (state.black.userId === userId) winner = 'white';
+  if (winner) endGame(io, code, winner, 'disconnect');
+});
+
+registerGameReconnectHandler('chess', (_io, socket, code) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  const uid = socket.userId;
+  if (!uid) return;
+  if (state.white.userId === uid) state.white.socketId = socket.id;
+  else if (state.black.userId === uid) state.black.socketId = socket.id;
+  else return;
+
+  socket.emit('chess:state', {
+    white: state.white.socketId,
+    black: state.black.socketId,
+    board: state.gameState.board,
+    turn: state.gameState.turn,
+    timeWhite: Math.max(0, state.timeWhite),
+    timeBlack: Math.max(0, state.timeBlack),
+    moves: state.moves,
+    isCheck: isCheck(state.gameState),
+  });
+});
 
 export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('game:start', async ({ code }: { code: string }) => {
@@ -62,7 +114,6 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
 
       activeGames.set(code, state);
 
-      // Start timer
       state.timerInterval = setInterval(() => {
         if (state.gameState.turn === 'w') {
           state.timeWhite -= 1;
@@ -98,6 +149,11 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
+    // Update socketId on reconnect via the state-request path as well
+    const myColor = playerColor(state, socket);
+    if (myColor === 'w') state.white.socketId = socket.id;
+    else if (myColor === 'b') state.black.socketId = socket.id;
+
     socket.emit('chess:state', {
       white: state.white.socketId,
       black: state.black.socketId,
@@ -114,10 +170,7 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
-    const isWhitePlayer = state.white.socketId === socket.id;
-    const isBlackPlayer = state.black.socketId === socket.id;
-    const myColor = isWhitePlayer ? 'w' : isBlackPlayer ? 'b' : null;
-
+    const myColor = playerColor(state, socket);
     if (myColor !== state.gameState.turn) {
       socket.emit('chess:valid_moves', { moves: [] });
       return;
@@ -135,10 +188,9 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     if (!state) return;
 
     const currentTurn = state.gameState.turn;
-    const isWhite = state.white.socketId === socket.id;
-    const isBlack = state.black.socketId === socket.id;
+    const myColor = playerColor(state, socket);
 
-    if ((currentTurn === 'w' && !isWhite) || (currentTurn === 'b' && !isBlack)) {
+    if (myColor !== currentTurn) {
       socket.emit('chess:invalid_move', { message: 'Not your turn' });
       return;
     }
@@ -179,20 +231,13 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
-    const isWhite = state.white.socketId === socket.id;
-    const winner = isWhite ? 'black' : 'white';
+    const myColor = playerColor(state, socket);
+    if (!myColor) return;
+    const winner = myColor === 'w' ? 'black' : 'white';
     endGame(io, code, winner, 'resignation');
   });
 
-  socket.on('disconnect', () => {
-    for (const [code, state] of activeGames) {
-      if (state.white.socketId === socket.id || state.black.socketId === socket.id) {
-        const isWhite = state.white.socketId === socket.id;
-        const winner = isWhite ? 'black' : 'white';
-        endGame(io, code, winner, 'disconnect');
-      }
-    }
-  });
+  // NOTE: no socket.on('disconnect') — presenceHandler calls our registered disconnect callback after grace period.
 }
 
 async function endGame(io: Server, code: string, winner: string, reason: string) {
@@ -224,6 +269,11 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
 
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
+    // Clear activeRoomCode for all participants
+    const ids = [state.white.userId, state.black.userId].filter(Boolean) as string[];
+    if (ids.length) {
+      await User.updateMany({ _id: { $in: ids } }, { activeRoomCode: null });
+    }
   } catch { /* ignore */ }
 
   activeGames.delete(code);

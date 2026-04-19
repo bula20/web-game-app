@@ -2,11 +2,13 @@ import { Server } from 'socket.io';
 import { nanoid } from 'nanoid';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room, GameType } from '../models/Room.js';
+import { User } from '../models/User.js';
 import { addPlayerToCharadesGame } from './charadesHandler.js';
-
-const HOST_AWAY_TTL = 120; // seconds
-
-const hostAwayTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+import {
+  cancelHostAwayTimeout,
+  cancelGameDisconnectTimeout,
+  cancelLobbyDisconnectTimeout,
+} from './presenceHandler.js';
 
 async function promoteNextHost(io: Server, code: string) {
   try {
@@ -35,11 +37,17 @@ async function promoteNextHost(io: Server, code: string) {
   }
 }
 
+async function setActiveRoom(userId: string | undefined, code: string | null) {
+  if (!userId) return;
+  try {
+    await User.findByIdAndUpdate(userId, { activeRoomCode: code });
+  } catch { /* ignore — guest User docs may not exist */ }
+}
+
 export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
   // Join lobby for a game type (subscribe to room list updates)
   socket.on('lobby:join', async ({ gameType }: { gameType: GameType }) => {
     socket.join(`lobby:${gameType}`);
-    // For charades, also show in_progress rooms that still have open slots
     const rooms = await Room.find({
       gameType,
       isPublic: true,
@@ -53,6 +61,34 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
   socket.on('lobby:leave', ({ gameType }: { gameType: GameType }) => {
     socket.leave(`lobby:${gameType}`);
+  });
+
+  socket.on('user:get_active_room', async () => {
+    if (!socket.userId) {
+      socket.emit('user:active_room', null);
+      return;
+    }
+    try {
+      const user = await User.findById(socket.userId).select('activeRoomCode');
+      const code = user?.activeRoomCode || null;
+      if (!code) {
+        socket.emit('user:active_room', null);
+        return;
+      }
+      const room = await Room.findOne({ code });
+      if (!room) {
+        await User.findByIdAndUpdate(socket.userId, { activeRoomCode: null });
+        socket.emit('user:active_room', null);
+        return;
+      }
+      socket.emit('user:active_room', {
+        code: room.code,
+        gameType: room.gameType,
+        status: room.status,
+      });
+    } catch (error) {
+      socket.emit('user:active_room', null);
+    }
   });
 
   // Create a new room
@@ -93,6 +129,8 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       socket.join(`room:${code}`);
       socket.emit('room:joined', { room, you: room.players[0] });
+      await setActiveRoom(socket.userId, code);
+      socket.emit('user:active_room_changed', { code, gameType: data.gameType, status: 'waiting' });
 
       if (data.isPublic) {
         io.to(`lobby:${data.gameType}`).emit('lobby:room_created', room);
@@ -122,36 +160,55 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
       if (room.status === 'host_away' && !socket.isGuest && socket.userId) {
         const isOriginalHost = room.host?.toString() === socket.userId;
         if (isOriginalHost) {
-          // Cancel the host away timeout
-          const t = hostAwayTimeouts.get(code);
-          if (t) { clearTimeout(t); hostAwayTimeouts.delete(code); }
+          cancelHostAwayTimeout(code);
 
-          // Re-add host at the front of the players list
-          room.players.unshift({
-            userId: socket.userId as any,
-            displayName: socket.displayName || 'Unknown',
-            socketId: socket.id,
-          } as any);
+          // If host already in players list (e.g. re-join via room:join while still listed), do not duplicate
+          const existingIdx = room.players.findIndex((p) => p.userId?.toString() === socket.userId);
+          if (existingIdx >= 0) {
+            room.players[existingIdx].socketId = socket.id;
+            if (existingIdx > 0) {
+              const [h] = room.players.splice(existingIdx, 1);
+              room.players.unshift(h);
+            }
+          } else {
+            room.players.unshift({
+              userId: socket.userId as any,
+              displayName: socket.displayName || 'Unknown',
+              socketId: socket.id,
+            } as any);
+          }
           room.status = 'waiting';
           room.hostDisconnectedAt = null;
           await room.save();
 
           socket.join(`room:${code}`);
           socket.emit('room:joined', { room, you: room.players[0] });
+          await setActiveRoom(socket.userId, code);
+          socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: 'waiting' });
           socket.to(`room:${code}`).emit('room:host_returned', { hostName: socket.displayName });
           io.to(`lobby:${room.gameType}`).emit('lobby:room_updated', room);
           return;
         }
       }
 
-      if (room.players.length >= room.maxPlayers) {
-        socket.emit('room:error', { message: 'Room is full' });
+      // Reconnect path: user is already listed — update socket ID instead of rejecting
+      const existingPlayer = socket.userId
+        ? room.players.find((p) => p.userId?.toString() === socket.userId)
+        : null;
+      if (existingPlayer) {
+        existingPlayer.socketId = socket.id;
+        await room.save();
+        socket.join(`room:${code}`);
+        cancelLobbyDisconnectTimeout(socket.userId!, code);
+        cancelGameDisconnectTimeout(socket.userId!, code);
+        socket.emit('room:joined', { room, you: existingPlayer });
+        await setActiveRoom(socket.userId, code);
+        socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: room.status });
         return;
       }
 
-      const alreadyInRoom = room.players.some(p => p.socketId === socket.id);
-      if (alreadyInRoom) {
-        socket.emit('room:error', { message: 'Already in this room' });
+      if (room.players.length >= room.maxPlayers) {
+        socket.emit('room:error', { message: 'Room is full' });
         return;
       }
 
@@ -166,8 +223,9 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       socket.join(`room:${code}`);
       socket.to(`room:${code}`).emit('room:player_joined', { player });
+      await setActiveRoom(socket.userId, code);
+      socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: room.status });
 
-      // If joining a charades game in progress, go straight into the game
       if (room.gameType === 'charades' && room.status === 'in_progress') {
         socket.emit('room:joined_in_progress', { room, you: player });
         addPlayerToCharadesGame(io, socket, code);
@@ -181,31 +239,43 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // Leave room
+  // Leave room (explicit user action — final, not a temp disconnect)
   socket.on('room:leave', async ({ code }: { code: string }) => {
     try {
       const room = await Room.findOne({ code });
       if (!room) return;
 
-      const isHost = room.players.length > 0 && room.players[0].socketId === socket.id;
+      const userId = socket.userId;
+      const playerIdx = userId
+        ? room.players.findIndex((p) => p.userId?.toString() === userId)
+        : room.players.findIndex((p) => p.socketId === socket.id);
+      if (playerIdx === -1) return;
 
-      room.players = room.players.filter(p => p.socketId !== socket.id) as any;
+      const isHost = playerIdx === 0;
+      room.players.splice(playerIdx, 1);
+      room.disconnectedPlayers = room.disconnectedPlayers.filter(
+        (d) => (userId ? d.userId?.toString() !== userId : true),
+      ) as any;
 
-      // Cancel any pending host-away timeout
-      const t = hostAwayTimeouts.get(code);
-      if (t) { clearTimeout(t); hostAwayTimeouts.delete(code); }
+      cancelHostAwayTimeout(code);
+      if (userId) {
+        cancelGameDisconnectTimeout(userId, code);
+        cancelLobbyDisconnectTimeout(userId, code);
+      }
+
+      await setActiveRoom(userId, null);
+      socket.emit('user:active_room_changed', null);
 
       if (room.players.length === 0) {
         await Room.deleteOne({ _id: room._id });
         io.to(`room:${code}`).emit('room:closed', { reason: 'host_left' });
         io.to(`lobby:${room.gameType}`).emit('lobby:room_removed', { roomId: room._id });
       } else if (isHost) {
-        // Immediate succession
         await room.save();
         await promoteNextHost(io, code);
       } else {
         await room.save();
-        socket.to(`room:${code}`).emit('room:player_left', { socketId: socket.id });
+        socket.to(`room:${code}`).emit('room:player_left', { socketId: socket.id, userId });
         io.to(`lobby:${room.gameType}`).emit('lobby:room_updated', room);
       }
 
@@ -215,48 +285,5 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // Handle disconnect - remove from rooms
-  socket.on('disconnect', async () => {
-    try {
-      const rooms = await Room.find({
-        'players.socketId': socket.id,
-        status: { $in: ['waiting', 'host_away'] },
-      });
-
-      for (const room of rooms) {
-        const isHost = room.players.length > 0 && room.players[0].socketId === socket.id;
-
-        room.players = room.players.filter(p => p.socketId !== socket.id) as any;
-
-        if (room.players.length === 0) {
-          // Cancel timeout if any, then delete
-          const t = hostAwayTimeouts.get(room.code);
-          if (t) { clearTimeout(t); hostAwayTimeouts.delete(room.code); }
-          await Room.deleteOne({ _id: room._id });
-          io.to(`lobby:${room.gameType}`).emit('lobby:room_removed', { roomId: room._id });
-        } else if (isHost) {
-          // Host disconnected — start the host_away timer
-          room.status = 'host_away';
-          room.hostDisconnectedAt = new Date();
-          await room.save();
-
-          io.to(`room:${room.code}`).emit('room:host_away', { expiresIn: HOST_AWAY_TTL });
-          io.to(`lobby:${room.gameType}`).emit('lobby:room_updated', room);
-
-          const code = room.code;
-          hostAwayTimeouts.set(code, setTimeout(() => {
-            promoteNextHost(io, code);
-            hostAwayTimeouts.delete(code);
-          }, HOST_AWAY_TTL * 1000));
-        } else {
-          // Non-host player disconnected
-          await room.save();
-          io.to(`room:${room.code}`).emit('room:player_left', { socketId: socket.id });
-          io.to(`lobby:${room.gameType}`).emit('lobby:room_updated', room);
-        }
-      }
-    } catch (error) {
-      console.error('Disconnect cleanup error:', error);
-    }
-  });
+  // NOTE: disconnect handling moved to presenceHandler.ts — do not register here.
 }

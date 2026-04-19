@@ -5,6 +5,11 @@ import { fileURLToPath } from 'url';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
 import { Game } from '../models/Game.js';
+import { User } from '../models/User.js';
+import {
+  registerGameDisconnectHandler,
+  registerGameReconnectHandler,
+} from './presenceHandler.js';
 
 // Load word bank
 let wordBank: Record<string, Record<string, string[]>> = { en: {}, pl: {} };
@@ -22,21 +27,16 @@ interface CharadesPlayer {
   displayName: string;
   points: number;
   hasGuessedCorrectly: boolean;
-  drawCount: number; // how many times this player has drawn
+  drawCount: number;
 }
 
 interface CharadesGameState {
   players: CharadesPlayer[];
-  // Index into players[] of who is currently drawing
   currentDrawerIndex: number;
-  // Index of the player who draws NEXT (advances round-robin through players[])
   nextDrawerSlot: number;
   currentWord: string;
-  // Total full cycles (each player draws once = 1 cycle) to play
   totalCycles: number;
-  // Which cycle we are currently in (1-based)
   currentCycle: number;
-  // Seconds per drawing turn
   drawingTime: number;
   timeLeft: number;
   timerInterval: ReturnType<typeof setInterval> | null;
@@ -45,6 +45,7 @@ interface CharadesGameState {
   usedWords: Set<string>;
   roomId: unknown;
   roundInProgress: boolean;
+  paused: boolean; // true while drawer is disconnected
 }
 
 const activeGames = new Map<string, CharadesGameState>();
@@ -82,6 +83,82 @@ function getRandomWord(lang: string, usedWords: Set<string>): string {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+function findPlayer(state: CharadesGameState, socket: AuthenticatedSocket): number {
+  const uid = socket.userId;
+  if (uid) {
+    const idx = state.players.findIndex((p) => p.userId === uid);
+    if (idx !== -1) return idx;
+  }
+  return state.players.findIndex((p) => p.socketId === socket.id);
+}
+
+function startTimer(io: Server, code: string) {
+  const state = activeGames.get(code);
+  if (!state) return;
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    if (state.paused) return;
+    state.timeLeft -= 1;
+    io.to(`room:${code}`).emit('charades:timer', { timeLeft: Math.max(0, state.timeLeft) });
+    if (state.timeLeft <= 0) {
+      endRound(io, code);
+    }
+  }, 1000);
+}
+
+// Presence callbacks: drawer-disconnect pauses; final timeout skips the round (drawer) or removes (guesser).
+registerGameDisconnectHandler('charades', (io, code, userId) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  const idx = state.players.findIndex((p) => p.userId === userId);
+  if (idx === -1) return;
+
+  if (idx === state.currentDrawerIndex && state.roundInProgress) {
+    // Drawer didn't return in time → skip round, drawer stays in game
+    state.paused = false;
+    io.to(`room:${code}`).emit('charades:drawer_skipped', {
+      displayName: state.players[idx].displayName,
+    });
+    endRound(io, code);
+  } else {
+    // Guesser didn't return → remove from game
+    removePlayer(io, code, idx);
+  }
+});
+
+registerGameReconnectHandler('charades', (io, socket, code) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  const uid = socket.userId;
+  if (!uid) return;
+  const idx = state.players.findIndex((p) => p.userId === uid);
+  if (idx === -1) return;
+
+  state.players[idx].socketId = socket.id;
+
+  if (idx === state.currentDrawerIndex && state.paused) {
+    state.paused = false;
+    io.to(`room:${code}`).emit('charades:resumed', {
+      drawerName: state.players[idx].displayName,
+      timeLeft: state.timeLeft,
+    });
+  }
+
+  const currentDrawer = state.players[state.currentDrawerIndex];
+  socket.emit('charades:current_state', {
+    drawerSocketId: currentDrawer.socketId,
+    drawerName: currentDrawer.displayName,
+    timeLeft: state.timeLeft,
+    scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+    cycle: state.currentCycle,
+    totalCycles: state.totalCycles,
+  });
+  // Re-send the word if reconnecting user is the drawer
+  if (idx === state.currentDrawerIndex && state.currentWord) {
+    socket.emit('charades:word', { word: state.currentWord, category: '' });
+  }
+});
+
 export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('game:start', async ({ code }: { code: string }) => {
     const room = await Room.findOne({ code, gameType: 'charades', status: 'waiting' });
@@ -89,7 +166,6 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     if (room.players[0].socketId !== socket.id) return;
     if (activeGames.has(code)) return;
 
-    // Keep room in_progress but still joinable (lobby handler will handle visibility)
     room.status = 'in_progress';
     await room.save();
 
@@ -105,7 +181,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     const state: CharadesGameState = {
       players,
       currentDrawerIndex: 0,
-      nextDrawerSlot: 0, // host (index 0) draws first
+      nextDrawerSlot: 0,
       currentWord: '',
       totalCycles: room.rounds ?? 3,
       currentCycle: 1,
@@ -117,6 +193,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
       usedWords: new Set(),
       roomId: room._id,
       roundInProgress: false,
+      paused: false,
     };
 
     activeGames.set(code, state);
@@ -131,14 +208,17 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('charades:get_state', ({ code }: { code: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
+    // Update socketId on state request (also acts as reconnect fallback)
+    const idx = findPlayer(state, socket);
+    if (idx !== -1) state.players[idx].socketId = socket.id;
+
     const drawer = state.players[state.currentDrawerIndex];
     socket.emit('charades:state', {
       drawerSocketId: drawer.socketId,
       drawerName: drawer.displayName,
       timeLeft: state.timeLeft,
       scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
-      // Only send the word to the drawer
-      word: drawer.socketId === socket.id ? state.currentWord : undefined,
+      word: idx === state.currentDrawerIndex ? state.currentWord : undefined,
       cycle: state.currentCycle,
       totalCycles: state.totalCycles,
     });
@@ -147,14 +227,16 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('charades:draw', ({ code, stroke }: { code: string; stroke: any }) => {
     const state = activeGames.get(code);
     if (!state) return;
-    if (state.players[state.currentDrawerIndex].socketId !== socket.id) return;
+    const idx = findPlayer(state, socket);
+    if (idx !== state.currentDrawerIndex) return;
     socket.to(`room:${code}`).emit('charades:draw', { stroke });
   });
 
   socket.on('charades:clear', ({ code }: { code: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
-    if (state.players[state.currentDrawerIndex].socketId !== socket.id) return;
+    const idx = findPlayer(state, socket);
+    if (idx !== state.currentDrawerIndex) return;
     socket.to(`room:${code}`).emit('charades:cleared');
   });
 
@@ -162,7 +244,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
-    const playerIndex = state.players.findIndex(p => p.socketId === socket.id);
+    const playerIndex = findPlayer(state, socket);
     if (playerIndex === -1) return;
     if (playerIndex === state.currentDrawerIndex) return;
     if (state.players[playerIndex].hasGuessedCorrectly) return;
@@ -197,35 +279,65 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-
   socket.on('charades:leave', ({ code }: { code: string }) => {
-    handlePlayerLeave(io, socket.id, code);
+    const state = activeGames.get(code);
+    if (!state) return;
+    const idx = findPlayer(state, socket);
+    if (idx === -1) return;
+
+    const uid = state.players[idx].userId;
+    const wasDrawer = idx === state.currentDrawerIndex;
+    removePlayer(io, code, idx);
+
+    // Explicit leave clears activeRoomCode
+    if (uid) {
+      User.findByIdAndUpdate(uid, { activeRoomCode: null }).catch(() => {});
+    }
+    Room.findOneAndUpdate(
+      { code },
+      { $pull: { players: { userId: uid ? uid as any : undefined, socketId: socket.id } } }
+    ).catch(() => {});
+
+    socket.leave(`room:${code}`);
+
+    // If drawer left during a round and game still running, skip round
+    const stillRunning = activeGames.get(code);
+    if (stillRunning && wasDrawer && stillRunning.roundInProgress) {
+      endRound(io, code);
+    }
   });
 
+  // NOTE: socket.on('disconnect') is handled by presenceHandler.
+  // On disconnect, if user is the drawer we pause the round immediately (before the grace expires)
+  // so the timer doesn't bleed out. The final outcome (skip/remove) is applied only after grace.
   socket.on('disconnect', () => {
-    for (const [code] of activeGames) {
-      handlePlayerLeave(io, socket.id, code);
+    for (const [code, state] of activeGames) {
+      const idx = state.players.findIndex((p) => p.socketId === socket.id);
+      if (idx === -1) continue;
+      if (idx === state.currentDrawerIndex && state.roundInProgress) {
+        state.paused = true;
+        io.to(`room:${code}`).emit('charades:paused', {
+          drawerName: state.players[idx].displayName,
+        });
+      }
     }
   });
 }
 
-function handlePlayerLeave(io: Server, socketId: string, code: string) {
+function removePlayer(io: Server, code: string, playerIndex: number) {
   const state = activeGames.get(code);
   if (!state) return;
-  const playerIndex = state.players.findIndex(p => p.socketId === socketId);
-  if (playerIndex === -1) return;
-
   const wasDrawer = playerIndex === state.currentDrawerIndex;
+  const removed = state.players[playerIndex];
   state.players.splice(playerIndex, 1);
 
-  // Adjust currentDrawerIndex after removal
+  // Adjust currentDrawerIndex
   if (playerIndex < state.currentDrawerIndex) {
     state.currentDrawerIndex--;
   } else if (playerIndex === state.currentDrawerIndex) {
     state.currentDrawerIndex = state.currentDrawerIndex % Math.max(state.players.length, 1);
   }
 
-  // Adjust nextDrawerSlot the same way
   if (state.players.length > 0) {
     if (playerIndex < state.nextDrawerSlot) {
       state.nextDrawerSlot--;
@@ -233,11 +345,17 @@ function handlePlayerLeave(io: Server, socketId: string, code: string) {
     state.nextDrawerSlot = state.nextDrawerSlot % state.players.length;
   }
 
-  // Update lobby so freed slot shows up
-  Room.findOneAndUpdate(
-    { code },
-    { $pull: { players: { socketId: socketId } } }
-  ).catch(() => {});
+  if (removed.userId) {
+    Room.findOneAndUpdate(
+      { code },
+      { $pull: { players: { userId: removed.userId as any } } }
+    ).catch(() => {});
+  }
+
+  io.to(`room:${code}`).emit('charades:player_left', {
+    displayName: removed.displayName,
+    scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+  });
 
   if (state.players.length < 2) {
     endCharadesGame(io, code);
@@ -245,7 +363,6 @@ function handlePlayerLeave(io: Server, socketId: string, code: string) {
   }
 
   if (wasDrawer && state.roundInProgress) {
-    // Skip to next player's turn
     endRound(io, code);
   }
 }
@@ -254,23 +371,21 @@ function startNewRound(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
 
-  // Check if all players have completed totalCycles rounds
   const minDraws = Math.min(...state.players.map(p => p.drawCount));
   if (minDraws >= state.totalCycles) {
     endCharadesGame(io, code);
     return;
   }
 
-  // Always take the next slot in strict order: 0, 1, 2, ..., N-1, 0, 1, ...
   state.currentDrawerIndex = state.nextDrawerSlot;
   state.nextDrawerSlot = (state.nextDrawerSlot + 1) % state.players.length;
   state.players[state.currentDrawerIndex].drawCount++;
-  // When the slot wraps back to 0 a full cycle has been completed — advance cycle counter
   if (state.nextDrawerSlot === 0) {
     state.currentCycle++;
   }
   state.players.forEach(p => { p.hasGuessedCorrectly = false; });
   state.roundInProgress = true;
+  state.paused = false;
 
   const word = getRandomWord(state.lang, state.usedWords);
   state.usedWords.add(word);
@@ -289,15 +404,7 @@ function startNewRound(io: Server, code: string) {
 
   io.to(drawer.socketId).emit('charades:word', { word, category: '' });
 
-  if (state.timerInterval) clearInterval(state.timerInterval);
-  state.timerInterval = setInterval(() => {
-    state.timeLeft -= 1;
-    io.to(`room:${code}`).emit('charades:timer', { timeLeft: Math.max(0, state.timeLeft) });
-
-    if (state.timeLeft <= 0) {
-      endRound(io, code);
-    }
-  }, 1000);
+  startTimer(io, code);
 }
 
 function endRound(io: Server, code: string) {
@@ -306,6 +413,7 @@ function endRound(io: Server, code: string) {
   if (!state.roundInProgress) return;
 
   state.roundInProgress = false;
+  state.paused = false;
 
   if (state.timerInterval) {
     clearInterval(state.timerInterval);
@@ -360,6 +468,10 @@ async function endCharadesGame(io: Server, code: string) {
 
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
+    const ids = state.players.map(p => p.userId).filter(Boolean) as string[];
+    if (ids.length) {
+      await User.updateMany({ _id: { $in: ids } }, { activeRoomCode: null });
+    }
   } catch { /* ignore */ }
 }
 
@@ -368,11 +480,28 @@ export function addPlayerToCharadesGame(io: Server, socket: AuthenticatedSocket,
   const state = activeGames.get(code);
   if (!state) return;
 
-  const alreadyIn = state.players.some(p => p.socketId === socket.id);
-  if (alreadyIn) return;
+  const uid = socket.userId;
+  // If this user is already in state, it's a reconnect — just refresh socketId.
+  const existingIdx = uid
+    ? state.players.findIndex((p) => p.userId === uid)
+    : state.players.findIndex((p) => p.socketId === socket.id);
+  if (existingIdx !== -1) {
+    state.players[existingIdx].socketId = socket.id;
+    const currentDrawer = state.players[state.currentDrawerIndex];
+    socket.emit('charades:current_state', {
+      drawerSocketId: currentDrawer.socketId,
+      drawerName: currentDrawer.displayName,
+      timeLeft: state.timeLeft,
+      scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+      cycle: state.currentCycle,
+      totalCycles: state.totalCycles,
+    });
+    if (existingIdx === state.currentDrawerIndex && state.currentWord) {
+      socket.emit('charades:word', { word: state.currentWord, category: '' });
+    }
+    return;
+  }
 
-  // Give the new player the same drawCount as the least-drawn player,
-  // so they join the rotation at the start of the next cycle, not mid-cycle.
   const minDraws = Math.min(...state.players.map(p => p.drawCount));
   const newPlayer: CharadesPlayer = {
     socketId: socket.id,
@@ -385,13 +514,14 @@ export function addPlayerToCharadesGame(io: Server, socket: AuthenticatedSocket,
 
   state.players.push(newPlayer);
 
-  // Send current game state to the joining player
   const currentDrawer = state.players[state.currentDrawerIndex];
   socket.emit('charades:current_state', {
     drawerSocketId: currentDrawer.socketId,
     drawerName: currentDrawer.displayName,
     timeLeft: state.timeLeft,
     scores: state.players.map(p => ({ displayName: p.displayName, points: p.points })),
+    cycle: state.currentCycle,
+    totalCycles: state.totalCycles,
   });
 
   io.to(`room:${code}`).emit('charades:player_joined', {

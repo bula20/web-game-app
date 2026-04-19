@@ -3,6 +3,13 @@ export interface User {
   username: string;
   email?: string;
   isGuest: boolean;
+  activeRoomCode?: string | null;
+}
+
+export interface ActiveRoomInfo {
+  code: string;
+  gameType: 'chess' | 'checkers' | 'charades';
+  status: 'waiting' | 'host_away' | 'in_progress' | 'finished';
 }
 
 export interface AuthResponse {

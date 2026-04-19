@@ -11,7 +11,8 @@
     "register": "Rejestracja",
     "logout": "Wyloguj",
     "friends": "Znajomi",
-    "language": "Język"
+    "language": "Język",
+    "myRoom": "Mój pokój"
   },
   "auth": {
     "login": "Zaloguj się",
@@ -53,7 +54,11 @@
     "rounds": "Liczba rund",
     "drawingTime": "Czas rysowania (sekundy)",
     "visibility": "Widoczność",
-    "create": "Utwórz"
+    "create": "Utwórz",
+    "alreadyInRoom": "Jesteś już w pokoju",
+    "alreadyInRoomDesc": "Jesteś obecnie w pokoju {{code}}. Opuścić go i dołączyć do nowego?",
+    "leaveAndJoin": "Opuść i dołącz",
+    "cancel": "Anuluj"
   },
   "game": {
     "yourTurn": "Twój ruch",
@@ -68,7 +73,9 @@
     "waiting": "Oczekiwanie na przeciwnika...",
     "moveHistory": "Historia ruchów",
     "promotion": "Wybierz figurę promocji",
-    "check": "Szach!"
+    "check": "Szach!",
+    "playerDisconnected": "{{name}} rozłączony. Wraca za {{seconds}}s lub przegra/wypada.",
+    "playerReconnected": "{{name}} wrócił"
   },
   "charades": {
     "draw": "Rysuj: {{word}}",
@@ -93,7 +100,9 @@
     "online": "Online",
     "offline": "Offline",
     "noFriends": "Brak znajomych",
-    "sendMessage": "Napisz wiadomość..."
+    "sendMessage": "Napisz wiadomość...",
+    "requestSent": "Zaproszenie do {{username}} zostało wysłane",
+    "requestFailed": "Nie udało się wysłać zaproszenia"
   },
   "history": {
     "title": "Historia gier",
@@ -112,5 +121,14 @@
     "player": "Gracz",
     "rounds": "{{rounds}} rund",
     "drawingTime": "{{seconds}}s/tura"
+  },
+  "myRoom": {
+    "title": "Mój pokój",
+    "notInRoom": "Obecnie nie jesteś w żadnym pokoju.",
+    "backToRoom": "Wróć do pokoju",
+    "goHome": "Strona główna",
+    "playing": "W trakcie",
+    "waiting": "Oczekiwanie",
+    "status": "Status"
   }
 }

@@ -9,6 +9,13 @@ export interface IRoomPlayer {
   socketId: string;
 }
 
+export interface IDisconnectedPlayer {
+  userId: Types.ObjectId | null;
+  displayName: string;
+  disconnectedAt: Date;
+  expiresIn: number;
+}
+
 export interface IRoom extends Document {
   code: string;
   gameType: GameType;
@@ -21,6 +28,7 @@ export interface IRoom extends Document {
   rounds: number;
   drawingTime: number;
   hostDisconnectedAt: Date | null;
+  disconnectedPlayers: IDisconnectedPlayer[];
   createdAt: Date;
 }
 
@@ -28,6 +36,13 @@ const roomPlayerSchema = new Schema<IRoomPlayer>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   displayName: { type: String, required: true },
   socketId: { type: String, required: true },
+}, { _id: false });
+
+const disconnectedPlayerSchema = new Schema<IDisconnectedPlayer>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  displayName: { type: String, required: true },
+  disconnectedAt: { type: Date, required: true },
+  expiresIn: { type: Number, required: true },
 }, { _id: false });
 
 const roomSchema = new Schema<IRoom>({
@@ -42,6 +57,7 @@ const roomSchema = new Schema<IRoom>({
   rounds: { type: Number, default: 3 },
   drawingTime: { type: Number, default: 60 },
   hostDisconnectedAt: { type: Date, default: null },
+  disconnectedPlayers: { type: [disconnectedPlayerSchema], default: [] },
 }, { timestamps: true });
 
 roomSchema.index({ gameType: 1, isPublic: 1, status: 1 });

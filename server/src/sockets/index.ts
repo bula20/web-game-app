@@ -8,6 +8,7 @@ import { setupChatHandler } from './chatHandler.js';
 import { setupChessHandler } from './chessHandler.js';
 import { setupCheckersHandler } from './checkersHandler.js';
 import { setupCharadesHandler } from './charadesHandler.js';
+import { setupPresenceHandler } from './presenceHandler.js';
 
 // Online users tracking: userId -> socketId
 const onlineUsers = new Map<string, string>();
@@ -40,7 +41,8 @@ export function setupSocketServer(httpServer: HttpServer) {
       }
     }
 
-    // Setup handlers
+    // Setup handlers (presence first so reconnect runs before game handlers register listeners)
+    setupPresenceHandler(io, socket);
     setupLobbyHandler(io, socket);
     setupChatHandler(io, socket);
     setupChessHandler(io, socket);

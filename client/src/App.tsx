@@ -12,6 +12,7 @@ import { HistoryPage } from '@/pages/HistoryPage';
 import { ChessPage } from '@/pages/ChessPage';
 import { CheckersPage } from '@/pages/CheckersPage';
 import { CharadesPage } from '@/pages/CharadesPage';
+import { MyRoomPage } from '@/pages/MyRoomPage';
 import { Toaster } from 'sonner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="/game/checkers/:code" element={<ProtectedRoute><CheckersPage /></ProtectedRoute>} />
         <Route path="/game/charades/:code" element={<ProtectedRoute><CharadesPage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+        <Route path="/my-room" element={<ProtectedRoute><MyRoomPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

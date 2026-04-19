@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Flag } from 'lucide-react';
+import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { ChatMessage } from '@/types/game';
 
 type Piece = null | 'w' | 'b' | 'W' | 'B'; // lowercase=regular, uppercase=king
@@ -229,6 +230,9 @@ export function CheckersPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 flex flex-col items-center gap-4">
+        <div className="w-full max-w-md">
+          <DisconnectBanner />
+        </div>
         <div className="text-2xl font-mono font-bold">
           {formatTime(playerColor === 'w' ? timeBlack : timeWhite)}
         </div>

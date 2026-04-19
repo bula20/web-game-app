@@ -28,6 +28,7 @@ export function LobbyPage() {
   const [timerMinutes, setTimerMinutes] = useState(10);
   const [rounds, setRounds] = useState(3);
   const [drawingTime, setDrawingTime] = useState(60);
+  const [pendingAction, setPendingAction] = useState<null | (() => void)>(null);
 
   useEffect(() => {
     if (!socket || !gameType) return;
@@ -80,29 +81,53 @@ export function LobbyPage() {
     };
   }, [socket, gameType]);
 
+  const guardAgainstExistingRoom = (targetCode: string | null, action: () => void) => {
+    if (user?.activeRoomCode && user.activeRoomCode !== targetCode) {
+      setPendingAction(() => action);
+      return;
+    }
+    action();
+  };
+
+  const confirmLeaveAndContinue = () => {
+    if (!socket || !user?.activeRoomCode) return;
+    socket.emit('room:leave', { code: user.activeRoomCode });
+    const action = pendingAction;
+    setPendingAction(null);
+    // Slight delay so the leave fires before create/join
+    setTimeout(() => action && action(), 50);
+  };
+
   const handleCreate = () => {
     if (!socket || !gameType) return;
-    socket.emit('room:create', {
-      gameType: gameType as GameType,
-      isPublic,
-      maxPlayers: gameType === 'charades' ? maxPlayers : 2,
-      ...(gameType === 'charades'
-        ? { rounds, drawingTime }
-        : { timerMinutes }),
-    });
-    setShowCreate(false);
+    const run = () => {
+      socket.emit('room:create', {
+        gameType: gameType as GameType,
+        isPublic,
+        maxPlayers: gameType === 'charades' ? maxPlayers : 2,
+        ...(gameType === 'charades'
+          ? { rounds, drawingTime }
+          : { timerMinutes }),
+      });
+      setShowCreate(false);
+    };
+    guardAgainstExistingRoom(null, run);
   };
 
   const handleJoinByCode = () => {
     if (!socket || !joinCode.trim()) return;
-    socket.emit('room:join', { code: joinCode.trim().toUpperCase() });
-    setShowJoinCode(false);
-    setJoinCode('');
+    const code = joinCode.trim().toUpperCase();
+    const run = () => {
+      socket.emit('room:join', { code });
+      setShowJoinCode(false);
+      setJoinCode('');
+    };
+    guardAgainstExistingRoom(code, run);
   };
 
   const handleJoinRoom = (code: string) => {
     if (!socket) return;
-    socket.emit('room:join', { code });
+    guardAgainstExistingRoom(code, () => socket.emit('room:join', { code }));
   };
 
   const gameNames: Record<string, string> = {
@@ -240,6 +265,26 @@ export function LobbyPage() {
           </div>
           <DialogFooter>
             <Button onClick={handleCreate}>{t('lobby.create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Already-in-room confirmation */}
+      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('lobby.alreadyInRoom')}</DialogTitle>
+            <DialogDescription>
+              {t('lobby.alreadyInRoomDesc', { code: user?.activeRoomCode || '' })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAction(null)}>
+              {t('lobby.cancel')}
+            </Button>
+            <Button onClick={confirmLeaveAndContinue}>
+              {t('lobby.leaveAndJoin')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

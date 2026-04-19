@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '@/types/user';
 import api from '@/lib/api';
-import { connectSocket, disconnectSocket } from '@/lib/socket';
+import { connectSocket, disconnectSocket, getSocket } from '@/lib/socket';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +12,7 @@ interface AuthContextType {
   loginAsGuest: () => Promise<void>;
   handleGoogleCallback: (token: string) => Promise<void>;
   logout: () => void;
+  setActiveRoomCode: (code: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -35,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     disconnectSocket();
   }, []);
 
+  const setActiveRoomCode = useCallback((code: string | null) => {
+    setUser((prev) => (prev ? { ...prev, activeRoomCode: code } : prev));
+  }, []);
+
   useEffect(() => {
     if (token) {
       api.get('/auth/me')
@@ -50,6 +55,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  // Listen to socket events for activeRoomCode updates
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    const attach = () => {
+      const s = getSocket();
+      if (!s) return false;
+
+      const onChanged = (data: { code: string; gameType: string; status: string } | null) => {
+        if (cancelled) return;
+        setUser((prev) => (prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev));
+      };
+      const onActive = (data: { code: string; gameType: string; status: string } | null) => {
+        if (cancelled) return;
+        setUser((prev) => (prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev));
+      };
+
+      s.on('user:active_room_changed', onChanged);
+      s.on('user:active_room', onActive);
+      return () => {
+        s.off('user:active_room_changed', onChanged);
+        s.off('user:active_room', onActive);
+      };
+    };
+
+    let detach = attach();
+    const interval = window.setInterval(() => {
+      if (!detach) detach = attach();
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      if (typeof detach === 'function') detach();
+    };
+  }, [token]);
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
@@ -77,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginAsGuest, handleGoogleCallback, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginAsGuest, handleGoogleCallback, logout, setActiveRoomCode }}>
       {children}
     </AuthContext.Provider>
   );

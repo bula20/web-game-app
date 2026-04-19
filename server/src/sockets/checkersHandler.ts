@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
 import { Game } from '../models/Game.js';
+import { User } from '../models/User.js';
 import {
   createInitialBoard,
   getValidMoves,
@@ -11,31 +12,78 @@ import {
   countPieces,
   type Board,
 } from '../game-logic/checkers.js';
+import {
+  registerGameDisconnectHandler,
+  registerGameReconnectHandler,
+} from './presenceHandler.js';
+
+interface CheckersPlayer {
+  socketId: string;
+  userId: string | null;
+  displayName: string;
+}
 
 interface CheckersGameState {
   board: Board;
   turn: 'w' | 'b';
-  white: { socketId: string; userId: string | null; displayName: string };
-  black: { socketId: string; userId: string | null; displayName: string };
+  white: CheckersPlayer;
+  black: CheckersPlayer;
   timeWhite: number;
   timeBlack: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
-  continuingFrom: [number, number] | null; // multi-jump tracking
+  continuingFrom: [number, number] | null;
   moves: string[];
   roomId: unknown;
 }
 
 const activeGames = new Map<string, CheckersGameState>();
 
+function playerColor(state: CheckersGameState, socket: AuthenticatedSocket): 'w' | 'b' | null {
+  const uid = socket.userId;
+  if (uid) {
+    if (state.white.userId === uid) return 'w';
+    if (state.black.userId === uid) return 'b';
+  }
+  if (state.white.socketId === socket.id) return 'w';
+  if (state.black.socketId === socket.id) return 'b';
+  return null;
+}
+
+registerGameDisconnectHandler('checkers', (io, code, userId) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  let winner: 'white' | 'black' | null = null;
+  if (state.white.userId === userId) winner = 'black';
+  else if (state.black.userId === userId) winner = 'white';
+  if (winner) endGame(io, code, winner, 'disconnect');
+});
+
+registerGameReconnectHandler('checkers', (_io, socket, code) => {
+  const state = activeGames.get(code);
+  if (!state) return;
+  const uid = socket.userId;
+  if (!uid) return;
+  const myColor = state.white.userId === uid ? 'w' : state.black.userId === uid ? 'b' : null;
+  if (!myColor) return;
+  if (myColor === 'w') state.white.socketId = socket.id;
+  else state.black.socketId = socket.id;
+
+  socket.emit('checkers:state', {
+    board: state.board,
+    playerColor: myColor,
+    turn: state.turn,
+    times: { white: Math.max(0, state.timeWhite), black: Math.max(0, state.timeBlack) },
+    moves: state.moves,
+  });
+});
+
 export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('game:start', async ({ code }: { code: string }) => {
-    // Only handle checkers rooms
     const room = await Room.findOne({ code, gameType: 'checkers', status: 'waiting' });
     if (!room || room.players.length < 2) return;
     if (room.players[0].socketId !== socket.id) return;
 
-    // Prevent double-start
     if (activeGames.has(code)) return;
 
     room.status = 'in_progress';
@@ -82,14 +130,12 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       }
     }, 1000);
 
-    // Emit to white player
     io.to(state.white.socketId).emit('checkers:start', {
       board,
       playerColor: 'w',
       times: { white: timerSeconds, black: timerSeconds },
     });
 
-    // Emit to black player
     io.to(state.black.socketId).emit('checkers:start', {
       board,
       playerColor: 'b',
@@ -101,9 +147,13 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
+    const myColor = playerColor(state, socket);
+    if (myColor === 'w') state.white.socketId = socket.id;
+    else if (myColor === 'b') state.black.socketId = socket.id;
+
     socket.emit('checkers:state', {
       board: state.board,
-      playerColor: state.white.socketId === socket.id ? 'w' : 'b',
+      playerColor: myColor ?? (state.white.socketId === socket.id ? 'w' : 'b'),
       turn: state.turn,
       times: { white: Math.max(0, state.timeWhite), black: Math.max(0, state.timeBlack) },
       moves: state.moves,
@@ -114,16 +164,13 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
-    const isWhitePlayer = state.white.socketId === socket.id;
-    const isBlackPlayer = state.black.socketId === socket.id;
-    const myColor = isWhitePlayer ? 'w' : isBlackPlayer ? 'b' : null;
+    const myColor = playerColor(state, socket);
 
     if (myColor !== state.turn) {
       socket.emit('checkers:valid_moves', { moves: [] });
       return;
     }
 
-    // If continuing a multi-jump, only allow moves from that piece
     if (state.continuingFrom) {
       if (position[0] !== state.continuingFrom[0] || position[1] !== state.continuingFrom[1]) {
         socket.emit('checkers:valid_moves', { moves: [] });
@@ -139,13 +186,10 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     const state = activeGames.get(code);
     if (!state) return;
 
-    const isWhitePlayer = state.white.socketId === socket.id;
-    const isBlackPlayer = state.black.socketId === socket.id;
-    const myColor = isWhitePlayer ? 'w' : isBlackPlayer ? 'b' : null;
+    const myColor = playerColor(state, socket);
 
     if (myColor !== state.turn) return;
 
-    // If continuing multi-jump, must use the same piece
     if (state.continuingFrom) {
       if (from[0] !== state.continuingFrom[0] || from[1] !== state.continuingFrom[1]) return;
     }
@@ -157,7 +201,6 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     state.moves.push(`${from[0]},${from[1]}-${to[0]},${to[1]}`);
 
     if (result.canContinue) {
-      // Multi-jump: same player continues
       state.continuingFrom = to;
       io.to(`room:${code}`).emit('checkers:moved', {
         board: state.board,
@@ -169,7 +212,6 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       return;
     }
 
-    // Switch turn
     state.continuingFrom = null;
     state.turn = state.turn === 'w' ? 'b' : 'w';
 
@@ -181,7 +223,6 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       moveBy: myColor,
     });
 
-    // Check game over
     if (!hasMovesForColor(state.board, state.turn)) {
       const winner = state.turn === 'w' ? 'black' : 'white';
       endGame(io, code, winner, 'no_moves');
@@ -198,18 +239,12 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on('checkers:resign', ({ code }: { code: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
-    const isWhite = state.white.socketId === socket.id;
-    endGame(io, code, isWhite ? 'black' : 'white', 'resignation');
+    const myColor = playerColor(state, socket);
+    if (!myColor) return;
+    endGame(io, code, myColor === 'w' ? 'black' : 'white', 'resignation');
   });
 
-  socket.on('disconnect', () => {
-    for (const [code, state] of activeGames) {
-      if (state.white.socketId === socket.id || state.black.socketId === socket.id) {
-        const isWhite = state.white.socketId === socket.id;
-        endGame(io, code, isWhite ? 'black' : 'white', 'disconnect');
-      }
-    }
-  });
+  // NOTE: no socket.on('disconnect') — presenceHandler handles grace period.
 }
 
 async function endGame(io: Server, code: string, winner: string, reason: string) {
@@ -241,6 +276,10 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
 
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
+    const ids = [state.white.userId, state.black.userId].filter(Boolean) as string[];
+    if (ids.length) {
+      await User.updateMany({ _id: { $in: ids } }, { activeRoomCode: null });
+    }
   } catch { /* ignore */ }
 
   activeGames.delete(code);

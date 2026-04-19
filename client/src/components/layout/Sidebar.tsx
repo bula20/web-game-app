@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserPlus, MessageCircle, X, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 import type { Friend, FriendRequest } from '@/types/user';
 
@@ -83,8 +84,11 @@ export function Sidebar() {
     if (!addUsername.trim()) return;
     try {
       await api.post('/friends/request', { username: addUsername.trim() });
+      toast.success(t('friends.requestSent', { username: addUsername.trim() }));
       setAddUsername('');
-    } catch { /* ignore */ }
+    } catch {
+      toast.error(t('friends.requestFailed'));
+    }
   };
 
   const handleAccept = async (requestId: string) => {

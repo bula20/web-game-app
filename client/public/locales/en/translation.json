@@ -11,7 +11,8 @@
     "register": "Register",
     "logout": "Logout",
     "friends": "Friends",
-    "language": "Language"
+    "language": "Language",
+    "myRoom": "My Room"
   },
   "auth": {
     "login": "Login",
@@ -53,7 +54,11 @@
     "rounds": "Number of rounds",
     "drawingTime": "Drawing time (seconds)",
     "visibility": "Visibility",
-    "create": "Create"
+    "create": "Create",
+    "alreadyInRoom": "You're already in a room",
+    "alreadyInRoomDesc": "You're currently in room {{code}}. Leave it and join the new one?",
+    "leaveAndJoin": "Leave and join new",
+    "cancel": "Cancel"
   },
   "game": {
     "yourTurn": "Your turn",
@@ -68,7 +73,9 @@
     "waiting": "Waiting for opponent...",
     "moveHistory": "Move History",
     "promotion": "Choose promotion piece",
-    "check": "Check!"
+    "check": "Check!",
+    "playerDisconnected": "{{name}} disconnected. Returns in {{seconds}}s or loses/is removed.",
+    "playerReconnected": "{{name}} reconnected"
   },
   "charades": {
     "draw": "Draw: {{word}}",
@@ -93,7 +100,9 @@
     "online": "Online",
     "offline": "Offline",
     "noFriends": "No friends yet",
-    "sendMessage": "Type a message..."
+    "sendMessage": "Type a message...",
+    "requestSent": "Friend request sent to {{username}}",
+    "requestFailed": "Failed to send friend request"
   },
   "history": {
     "title": "Game History",
@@ -112,5 +121,14 @@
     "player": "Player",
     "rounds": "{{rounds}} rounds",
     "drawingTime": "{{seconds}}s/turn"
+  },
+  "myRoom": {
+    "title": "My Room",
+    "notInRoom": "You are not currently in any room.",
+    "backToRoom": "Back to Room",
+    "goHome": "Go Home",
+    "playing": "In Progress",
+    "waiting": "Waiting",
+    "status": "Status"
   }
 }

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Flag } from 'lucide-react';
 import { ChessPiece } from '@/components/chess/ChessPiece';
+import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { ChatMessage } from '@/types/game';
 
 type Square = string | null;
@@ -359,6 +360,9 @@ export function ChessPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 flex flex-col items-center gap-4">
+        <div className="w-full max-w-md">
+          <DisconnectBanner />
+        </div>
         {/* Opponent timer */}
         <div className="text-2xl font-mono font-bold">
           {formatTime(playerColor === 'w' ? timeBlack : timeWhite)}

@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Gamepad2, History, LogOut, Globe } from 'lucide-react';
+import { Gamepad2, History, LogOut, Globe, DoorOpen } from 'lucide-react';
 
 export function Navbar() {
   const { t, i18n } = useTranslation();
@@ -30,6 +30,12 @@ export function Navbar() {
             <Link to="/history" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <History className="h-4 w-4" />
               {t('nav.history')}
+            </Link>
+          )}
+          {user && user.activeRoomCode && (
+            <Link to="/my-room" className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
+              <DoorOpen className="h-4 w-4" />
+              {t('nav.myRoom')}
             </Link>
           )}
         </div>
