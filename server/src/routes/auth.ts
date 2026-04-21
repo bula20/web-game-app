@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { User } from '../models/User.js';
 import { generateToken, authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { env } from '../config/env.js';
+import { guestActiveRooms } from '../sockets/guestState.js';
 
 const router = Router();
 
@@ -101,7 +102,15 @@ router.post('/guest', (req: Request, res: Response) => {
 router.get('/me', authMiddleware, (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
   if (authReq.isGuest) {
-    res.json({ id: authReq.userId, username: authReq.guestName, isGuest: true });
+    const activeRoomCode = authReq.userId
+      ? guestActiveRooms.get(authReq.userId)?.code ?? null
+      : null;
+    res.json({
+      id: authReq.userId,
+      username: authReq.guestName,
+      isGuest: true,
+      activeRoomCode,
+    });
     return;
   }
   if (authReq.user) {

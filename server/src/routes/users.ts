@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { User } from '../models/User.js';
 import { Room } from '../models/Room.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { guestActiveRooms } from '../sockets/guestState.js';
 
 const router = Router();
 
@@ -9,14 +10,21 @@ const router = Router();
 router.get('/me/active-room', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
-    const user = await User.findById(authReq.userId).select('activeRoomCode');
-    if (!user?.activeRoomCode) {
-      res.json(null);
-      return;
+    let roomCode: string | null = null;
+
+    if (authReq.isGuest && authReq.userId) {
+      roomCode = guestActiveRooms.get(authReq.userId)?.code ?? null;
+    } else {
+      const user = await User.findById(authReq.userId).select('activeRoomCode');
+      roomCode = user?.activeRoomCode ?? null;
     }
-    const room = await Room.findOne({ code: user.activeRoomCode });
+
+    if (!roomCode) { res.json(null); return; }
+
+    const room = await Room.findOne({ code: roomCode });
     if (!room) {
-      await User.findByIdAndUpdate(authReq.userId, { activeRoomCode: null });
+      if (authReq.isGuest && authReq.userId) guestActiveRooms.delete(authReq.userId);
+      else await User.findByIdAndUpdate(authReq.userId, { activeRoomCode: null });
       res.json(null);
       return;
     }

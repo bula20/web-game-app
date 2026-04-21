@@ -10,6 +10,7 @@ import {
   registerGameDisconnectHandler,
   registerGameReconnectHandler,
 } from './presenceHandler.js';
+import { guestActiveRooms } from './guestState.js';
 
 // Load word bank
 let wordBank: Record<string, Record<string, string[]>> = { en: {}, pl: {} };
@@ -171,7 +172,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
 
     const players: CharadesPlayer[] = room.players.map(p => ({
       socketId: p.socketId,
-      userId: p.userId?.toString() || null,
+      userId: p.userId?.toString() || p.guestId || null,
       displayName: p.displayName,
       points: 0,
       hasGuessedCorrectly: false,
@@ -286,16 +287,18 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     if (idx === -1) return;
 
     const uid = state.players[idx].userId;
+    const isGuestId = !!uid && uid.startsWith('guest_');
     const wasDrawer = idx === state.currentDrawerIndex;
     removePlayer(io, code, idx);
 
     // Explicit leave clears activeRoomCode
     if (uid) {
-      User.findByIdAndUpdate(uid, { activeRoomCode: null }).catch(() => {});
+      if (isGuestId) guestActiveRooms.delete(uid);
+      else User.findByIdAndUpdate(uid, { activeRoomCode: null }).catch(() => {});
     }
     Room.findOneAndUpdate(
       { code },
-      { $pull: { players: { userId: uid ? uid as any : undefined, socketId: socket.id } } }
+      { $pull: { players: isGuestId ? { guestId: uid } : { userId: uid ? uid as any : undefined, socketId: socket.id } } }
     ).catch(() => {});
 
     socket.leave(`room:${code}`);
@@ -346,10 +349,12 @@ function removePlayer(io: Server, code: string, playerIndex: number) {
   }
 
   if (removed.userId) {
+    const isGuestId = removed.userId.startsWith('guest_');
     Room.findOneAndUpdate(
       { code },
-      { $pull: { players: { userId: removed.userId as any } } }
+      { $pull: { players: isGuestId ? { guestId: removed.userId } : { userId: removed.userId as any } } }
     ).catch(() => {});
+    if (isGuestId) guestActiveRooms.delete(removed.userId);
   }
 
   io.to(`room:${code}`).emit('charades:player_left', {
@@ -469,9 +474,11 @@ async function endCharadesGame(io: Server, code: string) {
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
     const ids = state.players.map(p => p.userId).filter(Boolean) as string[];
-    if (ids.length) {
-      await User.updateMany({ _id: { $in: ids } }, { activeRoomCode: null });
+    const userIds = ids.filter((id) => !id.startsWith('guest_'));
+    if (userIds.length) {
+      await User.updateMany({ _id: { $in: userIds } }, { activeRoomCode: null });
     }
+    ids.filter((id) => id.startsWith('guest_')).forEach((gid) => guestActiveRooms.delete(gid));
   } catch { /* ignore */ }
 }
 
@@ -505,7 +512,7 @@ export function addPlayerToCharadesGame(io: Server, socket: AuthenticatedSocket,
   const minDraws = Math.min(...state.players.map(p => p.drawCount));
   const newPlayer: CharadesPlayer = {
     socketId: socket.id,
-    userId: socket.isGuest ? null : socket.userId || null,
+    userId: socket.userId || null,
     displayName: socket.displayName || 'Unknown',
     points: 0,
     hasGuessedCorrectly: false,

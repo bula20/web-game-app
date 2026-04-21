@@ -17,6 +17,7 @@ import {
   registerGameDisconnectHandler,
   registerGameReconnectHandler,
 } from './presenceHandler.js';
+import { guestActiveRooms } from './guestState.js';
 
 interface ChessPlayer {
   socketId: string;
@@ -101,8 +102,8 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
 
       const state: ChessGameState = {
         gameState,
-        white: { socketId: shuffled[0].socketId, userId: shuffled[0].userId?.toString() || null, displayName: shuffled[0].displayName },
-        black: { socketId: shuffled[1].socketId, userId: shuffled[1].userId?.toString() || null, displayName: shuffled[1].displayName },
+        white: { socketId: shuffled[0].socketId, userId: shuffled[0].userId?.toString() || shuffled[0].guestId || null, displayName: shuffled[0].displayName },
+        black: { socketId: shuffled[1].socketId, userId: shuffled[1].userId?.toString() || shuffled[1].guestId || null, displayName: shuffled[1].displayName },
         timeWhite: timerSeconds,
         timeBlack: timerSeconds,
         timerInterval: null,
@@ -269,11 +270,13 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
 
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
-    // Clear activeRoomCode for all participants
+    // Clear activeRoomCode for all participants (logged-in users in DB, guests in memory)
     const ids = [state.white.userId, state.black.userId].filter(Boolean) as string[];
-    if (ids.length) {
-      await User.updateMany({ _id: { $in: ids } }, { activeRoomCode: null });
+    const userIds = ids.filter((id) => !id.startsWith('guest_'));
+    if (userIds.length) {
+      await User.updateMany({ _id: { $in: userIds } }, { activeRoomCode: null });
     }
+    ids.filter((id) => id.startsWith('guest_')).forEach((gid) => guestActiveRooms.delete(gid));
   } catch { /* ignore */ }
 
   activeGames.delete(code);

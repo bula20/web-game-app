@@ -37,11 +37,18 @@ async function promoteNextHost(io: Server, code: string) {
   }
 }
 
-async function setActiveRoom(userId: string | undefined, code: string | null) {
+import { guestActiveRooms } from './guestState.js';
+
+async function setActiveRoom(userId: string | undefined, code: string | null, displayName?: string) {
   if (!userId) return;
+  if (userId.startsWith('guest_')) {
+    if (code && displayName) guestActiveRooms.set(userId, { code, displayName });
+    else guestActiveRooms.delete(userId);
+    return;
+  }
   try {
     await User.findByIdAndUpdate(userId, { activeRoomCode: code });
-  } catch { /* ignore — guest User docs may not exist */ }
+  } catch { /* ignore */ }
 }
 
 export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
@@ -69,15 +76,21 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
       return;
     }
     try {
-      const user = await User.findById(socket.userId).select('activeRoomCode');
-      const code = user?.activeRoomCode || null;
+      let code: string | null = null;
+      if (socket.isGuest) {
+        code = guestActiveRooms.get(socket.userId)?.code ?? null;
+      } else {
+        const user = await User.findById(socket.userId).select('activeRoomCode');
+        code = user?.activeRoomCode || null;
+      }
       if (!code) {
         socket.emit('user:active_room', null);
         return;
       }
       const room = await Room.findOne({ code });
       if (!room) {
-        await User.findByIdAndUpdate(socket.userId, { activeRoomCode: null });
+        if (socket.isGuest) guestActiveRooms.delete(socket.userId);
+        else await User.findByIdAndUpdate(socket.userId, { activeRoomCode: null });
         socket.emit('user:active_room', null);
         return;
       }
@@ -113,6 +126,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         host: socket.isGuest ? null : socket.userId,
         players: [{
           userId: socket.isGuest ? null : socket.userId,
+          guestId: (socket.isGuest ? socket.userId : null) ?? null,
           displayName: socket.displayName || 'Unknown',
           socketId: socket.id,
         }],
@@ -129,7 +143,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       socket.join(`room:${code}`);
       socket.emit('room:joined', { room, you: room.players[0] });
-      await setActiveRoom(socket.userId, code);
+      await setActiveRoom(socket.userId, code, socket.displayName);
       socket.emit('user:active_room_changed', { code, gameType: data.gameType, status: 'waiting' });
 
       if (data.isPublic) {
@@ -173,6 +187,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
           } else {
             room.players.unshift({
               userId: socket.userId as any,
+              guestId: null,
               displayName: socket.displayName || 'Unknown',
               socketId: socket.id,
             } as any);
@@ -183,7 +198,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
           socket.join(`room:${code}`);
           socket.emit('room:joined', { room, you: room.players[0] });
-          await setActiveRoom(socket.userId, code);
+          await setActiveRoom(socket.userId, code, socket.displayName);
           socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: 'waiting' });
           socket.to(`room:${code}`).emit('room:host_returned', { hostName: socket.displayName });
           io.to(`lobby:${room.gameType}`).emit('lobby:room_updated', room);
@@ -193,16 +208,20 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       // Reconnect path: user is already listed — update socket ID instead of rejecting
       const existingPlayer = socket.userId
-        ? room.players.find((p) => p.userId?.toString() === socket.userId)
+        ? (socket.isGuest
+            ? room.players.find((p) => p.guestId === socket.userId)
+            : room.players.find((p) => p.userId?.toString() === socket.userId))
         : null;
       if (existingPlayer) {
         existingPlayer.socketId = socket.id;
         await room.save();
         socket.join(`room:${code}`);
-        cancelLobbyDisconnectTimeout(socket.userId!, code);
-        cancelGameDisconnectTimeout(socket.userId!, code);
+        if (socket.userId) {
+          cancelLobbyDisconnectTimeout(socket.userId, code);
+          cancelGameDisconnectTimeout(socket.userId, code);
+        }
         socket.emit('room:joined', { room, you: existingPlayer });
-        await setActiveRoom(socket.userId, code);
+        await setActiveRoom(socket.userId, code, socket.displayName);
         socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: room.status });
         return;
       }
@@ -214,6 +233,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       const player = {
         userId: socket.isGuest ? null : socket.userId as any,
+        guestId: (socket.isGuest ? socket.userId : null) ?? null,
         displayName: socket.displayName || 'Unknown',
         socketId: socket.id,
       };
@@ -223,7 +243,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       socket.join(`room:${code}`);
       socket.to(`room:${code}`).emit('room:player_joined', { player });
-      await setActiveRoom(socket.userId, code);
+      await setActiveRoom(socket.userId, code, socket.displayName);
       socket.emit('user:active_room_changed', { code, gameType: room.gameType, status: room.status });
 
       if (room.gameType === 'charades' && room.status === 'in_progress') {
@@ -247,14 +267,18 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
 
       const userId = socket.userId;
       const playerIdx = userId
-        ? room.players.findIndex((p) => p.userId?.toString() === userId)
+        ? (socket.isGuest
+            ? room.players.findIndex((p) => p.guestId === userId)
+            : room.players.findIndex((p) => p.userId?.toString() === userId))
         : room.players.findIndex((p) => p.socketId === socket.id);
       if (playerIdx === -1) return;
 
       const isHost = playerIdx === 0;
       room.players.splice(playerIdx, 1);
       room.disconnectedPlayers = room.disconnectedPlayers.filter(
-        (d) => (userId ? d.userId?.toString() !== userId : true),
+        (d) => (userId
+          ? (socket.isGuest ? d.guestId !== userId : d.userId?.toString() !== userId)
+          : true),
       ) as any;
 
       cancelHostAwayTimeout(code);

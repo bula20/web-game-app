@@ -5,12 +5,14 @@ export type RoomStatus = 'waiting' | 'host_away' | 'in_progress' | 'finished';
 
 export interface IRoomPlayer {
   userId: Types.ObjectId | null;
+  guestId: string | null;
   displayName: string;
   socketId: string;
 }
 
 export interface IDisconnectedPlayer {
   userId: Types.ObjectId | null;
+  guestId: string | null;
   displayName: string;
   disconnectedAt: Date;
   expiresIn: number;
@@ -34,12 +36,14 @@ export interface IRoom extends Document {
 
 const roomPlayerSchema = new Schema<IRoomPlayer>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  guestId: { type: String, default: null },
   displayName: { type: String, required: true },
   socketId: { type: String, required: true },
 }, { _id: false });
 
 const disconnectedPlayerSchema = new Schema<IDisconnectedPlayer>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  guestId: { type: String, default: null },
   displayName: { type: String, required: true },
   disconnectedAt: { type: Date, required: true },
   expiresIn: { type: Number, required: true },

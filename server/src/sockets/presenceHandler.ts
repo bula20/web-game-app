@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room, GameType } from '../models/Room.js';
 import { User } from '../models/User.js';
+import { guestActiveRooms } from './guestState.js';
 
 export const GAME_DISCONNECT_GRACE = 20; // seconds
 export const LOBBY_NON_HOST_GRACE = 20; // seconds
@@ -100,14 +101,20 @@ async function removePlayerFromLobby(io: Server, code: string, userId: string) {
     if (!room) return;
     if (room.status !== 'waiting' && room.status !== 'host_away') return;
 
+    const isGuest = userId.startsWith('guest_');
+
     const before = room.players.length;
-    room.players = room.players.filter((p) => p.userId?.toString() !== userId) as any;
-    room.disconnectedPlayers = room.disconnectedPlayers.filter(
-      (d) => d.userId?.toString() !== userId,
-    ) as any;
+    if (isGuest) {
+      room.players = room.players.filter((p) => p.guestId !== userId) as any;
+      room.disconnectedPlayers = room.disconnectedPlayers.filter((d) => d.guestId !== userId) as any;
+    } else {
+      room.players = room.players.filter((p) => p.userId?.toString() !== userId) as any;
+      room.disconnectedPlayers = room.disconnectedPlayers.filter((d) => d.userId?.toString() !== userId) as any;
+    }
     if (before === room.players.length) return;
 
-    await User.findByIdAndUpdate(userId, { activeRoomCode: null }).catch(() => {});
+    if (isGuest) guestActiveRooms.delete(userId);
+    else await User.findByIdAndUpdate(userId, { activeRoomCode: null }).catch(() => {});
 
     if (room.players.length === 0) {
       await Room.deleteOne({ _id: room._id });
@@ -129,11 +136,13 @@ async function markPlayerDisconnected(code: string, userId: string, displayName:
   try {
     const room = await Room.findOne({ code });
     if (!room) return;
+    const isGuest = userId.startsWith('guest_');
     room.disconnectedPlayers = room.disconnectedPlayers.filter(
-      (d) => d.userId?.toString() !== userId,
+      (d) => isGuest ? d.guestId !== userId : d.userId?.toString() !== userId,
     ) as any;
     (room.disconnectedPlayers as any).push({
-      userId,
+      userId: isGuest ? null : userId,
+      guestId: isGuest ? userId : null,
       displayName,
       disconnectedAt: new Date(),
       expiresIn,
@@ -144,9 +153,10 @@ async function markPlayerDisconnected(code: string, userId: string, displayName:
 
 async function clearPlayerDisconnected(code: string, userId: string) {
   try {
+    const isGuest = userId.startsWith('guest_');
     await Room.findOneAndUpdate(
       { code },
-      { $pull: { disconnectedPlayers: { userId } } },
+      { $pull: { disconnectedPlayers: isGuest ? { guestId: userId } : { userId } } },
     );
   } catch { /* ignore */ }
 }
@@ -160,18 +170,21 @@ export function setupPresenceHandler(io: Server, socket: AuthenticatedSocket) {
 
   socket.on('disconnect', async () => {
     try {
-      const rooms = await Room.find({
-        'players.userId': userId,
-        status: { $in: ['waiting', 'host_away', 'in_progress'] },
-      });
+      const query = socket.isGuest
+        ? { 'players.guestId': userId, status: { $in: ['waiting', 'host_away', 'in_progress'] } }
+        : { 'players.userId': userId, status: { $in: ['waiting', 'host_away', 'in_progress'] } };
+      const rooms = await Room.find(query);
+
+      const matchPlayer = (p: { userId?: any; guestId?: string | null }) =>
+        socket.isGuest ? p.guestId === userId : p.userId?.toString() === userId;
 
       for (const room of rooms) {
         // If user re-connected on another socket since this disconnect, ignore
-        const player = room.players.find((p) => p.userId?.toString() === userId);
+        const player = room.players.find(matchPlayer);
         if (!player) continue;
         if (player.socketId !== socket.id) continue; // already swapped by newer socket
 
-        const isHost = room.players[0]?.userId?.toString() === userId;
+        const isHost = room.players[0] ? matchPlayer(room.players[0]) : false;
 
         if (room.status === 'waiting' || room.status === 'host_away') {
           if (isHost) {
@@ -251,14 +264,19 @@ async function handleReconnect(io: Server, socket: AuthenticatedSocket) {
   const userId = socket.userId;
   if (!userId) return;
 
-  const rooms = await Room.find({
-    'players.userId': userId,
-    status: { $in: ['waiting', 'host_away', 'in_progress'] },
-  });
+  const query = socket.isGuest
+    ? { 'players.guestId': userId, status: { $in: ['waiting', 'host_away', 'in_progress'] } }
+    : { 'players.userId': userId, status: { $in: ['waiting', 'host_away', 'in_progress'] } };
+  const rooms = await Room.find(query);
+
+  const matchPlayer = (p: { userId?: any; guestId?: string | null }) =>
+    socket.isGuest ? p.guestId === userId : p.userId?.toString() === userId;
+  const matchDisconnected = (d: { userId?: any; guestId?: string | null }) =>
+    socket.isGuest ? d.guestId === userId : d.userId?.toString() === userId;
 
   for (const room of rooms) {
     const code = room.code;
-    const player = room.players.find((p) => p.userId?.toString() === userId);
+    const player = room.players.find(matchPlayer);
     if (!player) continue;
 
     // Update socketId
@@ -269,15 +287,16 @@ async function handleReconnect(io: Server, socket: AuthenticatedSocket) {
     cancelLobbyDisconnectTimeout(userId, code);
 
     // If room was host_away and this user is the original host, restore
-    const isOriginalHost = room.host?.toString() === userId;
-    const wasInDisconnected = room.disconnectedPlayers.some((d) => d.userId?.toString() === userId);
+    // (guests can't be original hosts — room.host is always null for them)
+    const isOriginalHost = !socket.isGuest && room.host?.toString() === userId;
+    const wasInDisconnected = room.disconnectedPlayers.some(matchDisconnected);
 
     if (room.status === 'host_away' && isOriginalHost) {
       cancelHostAwayTimeout(code);
       room.status = 'waiting';
       room.hostDisconnectedAt = null;
       // Ensure host is at index 0
-      const hostIdx = room.players.findIndex((p) => p.userId?.toString() === userId);
+      const hostIdx = room.players.findIndex(matchPlayer);
       if (hostIdx > 0) {
         const [h] = room.players.splice(hostIdx, 1);
         room.players.unshift(h);
@@ -286,7 +305,7 @@ async function handleReconnect(io: Server, socket: AuthenticatedSocket) {
 
     if (wasInDisconnected) {
       room.disconnectedPlayers = room.disconnectedPlayers.filter(
-        (d) => d.userId?.toString() !== userId,
+        (d) => !matchDisconnected(d),
       ) as any;
     }
 
