@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
-import { Game } from '../models/Game.js';
+import { Game, pruneOldGames } from '../models/Game.js';
 import { User } from '../models/User.js';
 import {
   createInitialState,
@@ -255,15 +255,20 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
       roomId: state.roomId,
       gameType: 'chess',
       players: [
-        { userId: state.white.userId, displayName: state.white.displayName },
-        { userId: state.black.userId, displayName: state.black.displayName },
+        { userId: state.white.userId?.startsWith('guest_') ? null : state.white.userId, displayName: state.white.displayName },
+        { userId: state.black.userId?.startsWith('guest_') ? null : state.black.userId, displayName: state.black.displayName },
       ],
-      winner: winner === 'white' ? state.white.userId : winner === 'black' ? state.black.userId : null,
+      winner: winner === 'white'
+        ? (state.white.userId?.startsWith('guest_') ? null : state.white.userId)
+        : winner === 'black'
+          ? (state.black.userId?.startsWith('guest_') ? null : state.black.userId)
+          : null,
       result: winner as any,
       moves: state.moves,
       duration,
       finishedAt: new Date(),
     });
+    await pruneOldGames([state.white.userId, state.black.userId]);
   } catch (error) {
     console.error('Failed to save chess game:', error);
   }

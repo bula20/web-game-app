@@ -46,3 +46,25 @@ const gameSchema = new Schema<IGame>({
 gameSchema.index({ 'players.userId': 1, createdAt: -1 });
 
 export const Game = mongoose.model<IGame>('Game', gameSchema);
+
+const MAX_GAMES_PER_USER = 50;
+
+export async function pruneOldGames(userIds: (string | null)[]): Promise<void> {
+  const validIds = userIds.filter((id): id is string => !!id && !id.startsWith('guest_'));
+  for (const userId of validIds) {
+    let objectId: Types.ObjectId;
+    try {
+      objectId = new Types.ObjectId(userId);
+    } catch {
+      continue;
+    }
+    const oldest = await Game.find({ 'players.userId': objectId })
+      .sort({ createdAt: -1 })
+      .skip(MAX_GAMES_PER_USER)
+      .select('_id')
+      .lean();
+    if (oldest.length > 0) {
+      await Game.deleteMany({ _id: { $in: oldest.map((g) => g._id) } });
+    }
+  }
+}

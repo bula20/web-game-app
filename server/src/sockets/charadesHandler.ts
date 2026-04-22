@@ -4,7 +4,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
-import { Game } from '../models/Game.js';
+import { Game, pruneOldGames } from '../models/Game.js';
 import { User } from '../models/User.js';
 import {
   registerGameDisconnectHandler,
@@ -461,12 +461,13 @@ async function endCharadesGame(io: Server, code: string) {
     await Game.create({
       roomId: state.roomId,
       gameType: 'charades',
-      players: state.players.map(p => ({ userId: p.userId, displayName: p.displayName })),
-      winner: sortedScores[0]?.userId || null,
+      players: state.players.map(p => ({ userId: p.userId?.startsWith('guest_') ? null : p.userId, displayName: p.displayName })),
+      winner: sortedScores[0]?.userId?.startsWith('guest_') ? null : (sortedScores[0]?.userId || null),
       scores: finalScores,
       duration,
       finishedAt: new Date(),
     });
+    await pruneOldGames(state.players.map(p => p.userId));
   } catch (error) {
     console.error('Failed to save charades game:', error);
   }
