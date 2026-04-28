@@ -2,10 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 
 export function RegisterPage() {
   const { t } = useTranslation();
@@ -21,12 +17,7 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setIsLoading(true);
     try {
       await register(username, email, password);
@@ -38,77 +29,81 @@ export function RegisterPage() {
     }
   };
 
+  const labelStyle = {
+    display: 'block', fontFamily: 'var(--font-head)', fontSize: 12,
+    fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const,
+    color: 'var(--pr-text-secondary)', marginBottom: 6,
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t('auth.register')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="username">{t('auth.username')}</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                minLength={3}
-                maxLength={30}
-                pattern="[a-zA-Z0-9_]+"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {t('auth.register')}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <p className="text-sm text-muted-foreground">
-            {t('auth.haveAccount')}{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              {t('auth.login')}
-            </Link>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+      background: `radial-gradient(900px 600px at 70% 30%, rgba(92,70,156,.35), transparent 65%), var(--ink-900)`,
+    }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <span className="pr-logo" style={{ fontSize: 42 }}>PlayRoom</span>
+          </Link>
+        </div>
+
+        <div className="pr-card" style={{ padding: 32 }}>
+          <h1 style={{ fontSize: 28, marginBottom: 6, textAlign: 'center' }}>{t('auth.register')}</h1>
+          <p style={{ color: 'var(--pr-text-secondary)', fontSize: 14, textAlign: 'center', marginBottom: 28 }}>
+            {t('auth.registerSubtitle', 'Za chwilę będziesz grać.')}
           </p>
-        </CardFooter>
-      </Card>
+
+          {error && (
+            <div style={{
+              background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.3)',
+              borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+              color: 'var(--pr-danger)', fontSize: 13,
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>{t('auth.username')}</label>
+              <input className="pr-input" value={username} onChange={e => setUsername(e.target.value)}
+                placeholder="np. kasia.m" minLength={3} maxLength={30} pattern="[a-zA-Z0-9_]+" required />
+            </div>
+            <div>
+              <label style={labelStyle}>{t('auth.email')}</label>
+              <input className="pr-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="ty@example.pl" required />
+            </div>
+            <div>
+              <label style={labelStyle}>{t('auth.password')}</label>
+              <input className="pr-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" minLength={6} required />
+            </div>
+            <div>
+              <label style={labelStyle}>{t('auth.confirmPassword')}</label>
+              <input className="pr-input" type="password" value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="••••••••" minLength={6} required />
+            </div>
+            <button
+              type="submit"
+              className="pr-btn pr-btn-primary pr-btn-lg"
+              style={{ width: '100%', marginTop: 6 }}
+              disabled={isLoading}
+            >
+              {isLoading ? '…' : t('auth.register')}
+            </button>
+          </form>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--pr-text-muted)' }}>
+          {t('auth.haveAccount')}{' '}
+          <Link to="/login" style={{ color: 'var(--pr-accent)', textDecoration: 'none', fontWeight: 600 }}>
+            {t('auth.login')}
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

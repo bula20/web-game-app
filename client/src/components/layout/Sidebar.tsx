@@ -2,28 +2,25 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, MessageCircle, X, Send } from 'lucide-react';
+import { Search, UserPlus, Send, ArrowLeft, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import type { Friend, FriendRequest } from '@/types/user';
+
+type DmMessage = { from: string; fromId: string; text: string; timestamp: string };
 
 export function Sidebar() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
-  const [isOpen, setIsOpen] = useState(false);
+
+  const [tab, setTab] = useState<'friends' | 'dm'>('friends');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ _id: string; username: string }[]>([]);
   const [addUsername, setAddUsername] = useState('');
+  const [query, setQuery] = useState('');
   const [chatWith, setChatWith] = useState<Friend | null>(null);
-  const [chatMessages, setChatMessages] = useState<{ from: string; fromId: string; text: string; timestamp: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<DmMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,25 +36,16 @@ export function Sidebar() {
 
   useEffect(() => {
     if (!socket) return;
-
     socket.on('friend:online_status', ({ userId, online }: { userId: string; online: boolean }) => {
       setFriends(prev => prev.map(f => f._id === userId ? { ...f, online } : f));
     });
-
-    socket.on('friend:request_received', () => {
-      loadRequests();
-    });
-
-    socket.on('friend:accepted', () => {
-      loadFriends();
-    });
-
-    socket.on('chat:direct_message', (msg: { from: string; fromId: string; text: string; timestamp: string }) => {
+    socket.on('friend:request_received', () => loadRequests());
+    socket.on('friend:accepted', () => loadFriends());
+    socket.on('chat:direct_message', (msg: DmMessage) => {
       if (chatWith && msg.fromId === chatWith._id) {
         setChatMessages(prev => [...prev, msg]);
       }
     });
-
     return () => {
       socket.off('friend:online_status');
       socket.off('friend:request_received');
@@ -67,17 +55,10 @@ export function Sidebar() {
   }, [socket, chatWith]);
 
   const loadFriends = async () => {
-    try {
-      const res = await api.get('/friends');
-      setFriends(res.data);
-    } catch { /* ignore */ }
+    try { const r = await api.get('/friends'); setFriends(r.data); } catch { /* ignore */ }
   };
-
   const loadRequests = async () => {
-    try {
-      const res = await api.get('/friends/requests');
-      setRequests(res.data);
-    } catch { /* ignore */ }
+    try { const r = await api.get('/friends/requests'); setRequests(r.data); } catch { /* ignore */ }
   };
 
   const handleAddFriend = async () => {
@@ -86,29 +67,20 @@ export function Sidebar() {
       await api.post('/friends/request', { username: addUsername.trim() });
       toast.success(t('friends.requestSent', { username: addUsername.trim() }));
       setAddUsername('');
-    } catch {
-      toast.error(t('friends.requestFailed'));
-    }
+    } catch { toast.error(t('friends.requestFailed')); }
   };
 
-  const handleAccept = async (requestId: string) => {
-    try {
-      await api.post(`/friends/accept/${requestId}`);
-      loadFriends();
-      loadRequests();
-    } catch { /* ignore */ }
+  const handleAccept = async (id: string) => {
+    try { await api.post(`/friends/accept/${id}`); loadFriends(); loadRequests(); } catch { /* ignore */ }
   };
-
-  const handleReject = async (requestId: string) => {
-    try {
-      await api.post(`/friends/reject/${requestId}`);
-      loadRequests();
-    } catch { /* ignore */ }
+  const handleReject = async (id: string) => {
+    try { await api.post(`/friends/reject/${id}`); loadRequests(); } catch { /* ignore */ }
   };
 
   const openChat = (friend: Friend) => {
     setChatWith(friend);
     setChatMessages([]);
+    setTab('dm');
     if (socket) {
       socket.emit('chat:get_history', { withUserId: friend._id }, (messages: any[]) => {
         setChatMessages(messages.map(m => ({
@@ -133,158 +105,258 @@ export function Sidebar() {
     setMessageText('');
   };
 
-  const handleSearch = async (q: string) => {
-    setSearchQuery(q);
-    if (q.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    try {
-      const res = await api.get(`/users/search?q=${encodeURIComponent(q)}`);
-      setSearchResults(res.data);
-    } catch { /* ignore */ }
-  };
-
   if (!user || user.isGuest) return null;
 
+  const online = friends.filter(f => f.online);
+  const offline = friends.filter(f => !f.online);
+  const filtered = (arr: Friend[]) => arr.filter(f => f.username.toLowerCase().includes(query.toLowerCase()));
+  const unreadCount = requests.length;
+
   return (
-    <>
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 shadow-lg"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Users className="h-5 w-5" />
-        {requests.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {requests.length}
-          </span>
-        )}
-      </Button>
-
-      {isOpen && (
-        <div className="fixed right-0 top-0 h-full w-80 bg-background border-l shadow-xl z-50 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-semibold">{t('friends.title')}</h2>
-            <Button variant="ghost" size="icon" onClick={() => { setIsOpen(false); setChatWith(null); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {chatWith ? (
-            <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-              <div className="flex items-center gap-2 p-3 border-b">
-                <Button variant="ghost" size="sm" onClick={() => setChatWith(null)}>
-                  &larr;
-                </Button>
-                <span className="font-medium">{chatWith.username}</span>
-              </div>
-              <ScrollArea className="flex-1 min-h-0 p-3">
-                <div className="space-y-2">
-                  {chatMessages.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.fromId === user?.id ? 'items-end' : 'items-start'}`}>
-                      <div className={`rounded-lg px-3 py-1.5 text-sm max-w-[80%] ${msg.fromId === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-              </ScrollArea>
-              <div className="p-3 border-t flex gap-2">
-                <Input
-                  value={messageText}
-                  onChange={e => setMessageText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                  placeholder={t('friends.sendMessage')}
-                  className="flex-1"
-                />
-                <Button size="icon" onClick={sendMessage}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <ScrollArea className="flex-1">
-              <div className="p-3 space-y-3">
-                {/* Add friend */}
-                <div className="flex gap-2">
-                  <Input
-                    value={addUsername}
-                    onChange={e => setAddUsername(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddFriend()}
-                    placeholder={t('friends.addFriend')}
-                    className="flex-1"
-                  />
-                  <Button size="icon" onClick={handleAddFriend}>
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Search */}
-                <Input
-                  value={searchQuery}
-                  onChange={e => handleSearch(e.target.value)}
-                  placeholder={t('friends.search')}
-                />
-                {searchResults.length > 0 && (
-                  <div className="space-y-1">
-                    {searchResults.map(u => (
-                      <div key={u._id} className="flex items-center justify-between p-2 rounded hover:bg-muted">
-                        <span className="text-sm">{u.username}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Friend requests */}
-                {requests.length > 0 && (
-                  <>
-                    <Separator />
-                    <h3 className="text-sm font-medium">{t('friends.requests')}</h3>
-                    {requests.map(req => (
-                      <div key={req._id} className="flex items-center justify-between p-2 rounded bg-muted">
-                        <span className="text-sm">{req.from.username}</span>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline" onClick={() => handleAccept(req._id)}>
-                            {t('friends.accept')}
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleReject(req._id)}>
-                            {t('friends.reject')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Friends list */}
-                <Separator />
-                <h3 className="text-sm font-medium">{t('friends.title')}</h3>
-                {friends.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('friends.noFriends')}</p>
-                ) : (
-                  friends.map(friend => (
-                    <div key={friend._id} className="flex items-center justify-between p-2 rounded hover:bg-muted">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${friend.online ? 'bg-green-500' : 'bg-gray-300'}`} />
-                        <span className="text-sm">{friend.username}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {friend.online ? t('friends.online') : t('friends.offline')}
-                        </Badge>
-                      </div>
-                      <Button size="icon" variant="ghost" onClick={() => openChat(friend)}>
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          )}
+    <aside className="pr-sidebar">
+      {/* Tab switcher */}
+      <div className="pr-sidebar-header">
+        <div className="pr-tabs" style={{ width: '100%' }}>
+          <button
+            className={`pr-tab ${tab === 'friends' ? 'active' : ''}`}
+            style={{ flex: 1 }}
+            onClick={() => setTab('friends')}
+          >
+            {t('friends.title', 'Znajomi')}
+            {unreadCount > 0 && (
+              <span style={{
+                marginLeft: 6, background: 'var(--pr-accent)', color: '#1A0B2E',
+                fontSize: 10, padding: '1px 5px', borderRadius: 999, fontWeight: 700,
+              }}>{unreadCount}</span>
+            )}
+          </button>
+          <button
+            className={`pr-tab ${tab === 'dm' ? 'active' : ''}`}
+            style={{ flex: 1 }}
+            onClick={() => { setTab('dm'); if (!chatWith && friends.length > 0) setChatWith(null); }}
+          >
+            {t('friends.dm', 'Wiadomości')}
+          </button>
         </div>
-      )}
-    </>
+      </div>
+
+      {/* Search bar */}
+      <div style={{ padding: '10px 12px 6px', position: 'relative' }}>
+        <Search size={14} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: 'var(--pr-text-muted)', pointerEvents: 'none' }} />
+        <input
+          className="pr-input"
+          style={{ height: 34, paddingLeft: 36, fontSize: 13 }}
+          placeholder={t('friends.search', 'Szukaj znajomych…')}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 8px' }}>
+        {/* ── Friends tab ── */}
+        {tab === 'friends' && (
+          <>
+            {/* Add friend */}
+            <div style={{ display: 'flex', gap: 6, padding: '6px 12px 10px' }}>
+              <input
+                className="pr-input"
+                style={{ height: 34, fontSize: 13, flex: 1 }}
+                placeholder={t('friends.addFriend', 'Dodaj znajomego…')}
+                value={addUsername}
+                onChange={e => setAddUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddFriend()}
+              />
+              <button className="pr-btn pr-btn-primary pr-btn-sm" style={{ padding: '0 10px', height: 34 }} onClick={handleAddFriend}>
+                <UserPlus size={14} />
+              </button>
+            </div>
+
+            {/* Friend requests */}
+            {requests.length > 0 && (
+              <>
+                <div className="pr-sidebar-section">{t('friends.requests', 'Zaproszenia')}</div>
+                {requests.map(req => (
+                  <div key={req._id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', margin: '0 6px', borderRadius: 8,
+                    background: 'rgba(252,211,77,.08)', border: '1px solid rgba(252,211,77,.18)',
+                    marginBottom: 4,
+                  }}>
+                    <div className="pr-avatar pr-avatar-sm" style={{ background: 'linear-gradient(135deg,#FCD34D,#F59E0B)', color: '#3B2500' }}>
+                      {req.from.username.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--pr-text-primary)' }}>
+                      {req.from.username}
+                    </span>
+                    <button className="pr-btn pr-btn-sm" style={{ padding: '0 8px', height: 28, background: 'rgba(74,222,128,.15)', color: 'var(--pr-success)', border: '1px solid rgba(74,222,128,.3)' }}
+                      onClick={() => handleAccept(req._id)}>
+                      <Check size={13} />
+                    </button>
+                    <button className="pr-btn pr-btn-ghost pr-btn-sm" style={{ padding: '0 6px', height: 28 }}
+                      onClick={() => handleReject(req._id)}>
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Online friends */}
+            {filtered(online).length > 0 && (
+              <div className="pr-sidebar-section">
+                {t('friends.online', 'Online').toUpperCase()} — {filtered(online).length}
+              </div>
+            )}
+            {filtered(online).map(f => <FriendRow key={f._id} friend={f} onChat={() => openChat(f)} />)}
+
+            {/* Offline friends */}
+            {filtered(offline).length > 0 && (
+              <div className="pr-sidebar-section" style={{ marginTop: 8 }}>
+                {t('friends.offline', 'Offline').toUpperCase()} — {filtered(offline).length}
+              </div>
+            )}
+            {filtered(offline).map(f => <FriendRow key={f._id} friend={f} onChat={() => openChat(f)} />)}
+
+            {friends.length === 0 && (
+              <div style={{ padding: '20px 16px', color: 'var(--pr-text-muted)', fontSize: 13, textAlign: 'center' }}>
+                {t('friends.noFriends', 'Brak znajomych. Dodaj kogoś!')}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── DM tab ── */}
+        {tab === 'dm' && (
+          chatWith ? (
+            <DMChat
+              friend={chatWith}
+              messages={chatMessages}
+              draft={messageText}
+              setDraft={setMessageText}
+              onSend={sendMessage}
+              onBack={() => setChatWith(null)}
+              myId={user.id}
+              chatEndRef={chatEndRef}
+              t={t}
+            />
+          ) : (
+            <>
+              {friends.map(f => (
+                <div key={f._id} className="pr-friend-row" onClick={() => openChat(f)}>
+                  <div style={{ position: 'relative' }}>
+                    <div className="pr-avatar pr-avatar-md">
+                      {f.username.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className={`pr-dot ${f.online ? 'pr-dot-online' : ''}`}
+                      style={{ position: 'absolute', right: -2, bottom: -2, border: '2px solid var(--ink-800)' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.username}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--pr-text-muted)' }}>
+                      {f.online ? t('friends.online', 'online') : t('friends.offline', 'offline')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {friends.length === 0 && (
+                <div style={{ padding: '20px 16px', color: 'var(--pr-text-muted)', fontSize: 13, textAlign: 'center' }}>
+                  {t('friends.noFriends', 'Brak znajomych.')}
+                </div>
+              )}
+            </>
+          )
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function FriendRow({ friend, onChat }: { friend: Friend; onChat: () => void }) {
+  return (
+    <div className="pr-friend-row" onClick={onChat}>
+      <div style={{ position: 'relative' }}>
+        <div className="pr-avatar pr-avatar-md">
+          {friend.username.slice(0, 2).toUpperCase()}
+        </div>
+        <span
+          className={`pr-dot ${friend.online ? 'pr-dot-online' : ''}`}
+          style={{ position: 'absolute', right: -2, bottom: -2, border: '2px solid var(--ink-800)' }}
+        />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {friend.username}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--pr-text-muted)' }}>
+          {friend.online ? 'online' : 'offline'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DMChat({
+  friend, messages, draft, setDraft, onSend, onBack, myId, chatEndRef, t,
+}: {
+  friend: Friend;
+  messages: DmMessage[];
+  draft: string;
+  setDraft: (v: string) => void;
+  onSend: () => void;
+  onBack: () => void;
+  myId?: string;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
+  t: (k: string, d?: string) => string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 12px', borderBottom: '1px solid var(--pr-border-subtle)',
+      }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--pr-text-muted)', cursor: 'pointer', padding: 4 }}>
+          <ArrowLeft size={16} />
+        </button>
+        <div className="pr-avatar pr-avatar-sm">{friend.username.slice(0, 2).toUpperCase()}</div>
+        <span style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 14 }}>{friend.username}</span>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.fromId === myId ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
+            <div style={{
+              padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.4,
+              background: m.fromId === myId
+                ? 'linear-gradient(180deg, var(--pr-accent), #BB90E8)'
+                : 'rgba(29,38,125,.6)',
+              color: m.fromId === myId ? '#1A0B2E' : 'var(--pr-text-primary)',
+              border: m.fromId === myId ? 'none' : '1px solid var(--pr-border-subtle)',
+            }}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 10px' }}>
+        <input
+          className="pr-input"
+          style={{ height: 34, fontSize: 13, flex: 1 }}
+          placeholder={t('friends.sendMessage', 'Napisz wiadomość…')}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onSend()}
+        />
+        <button className="pr-btn pr-btn-primary pr-btn-sm" style={{ padding: '0 10px', height: 34 }} onClick={onSend}>
+          <Send size={14} />
+        </button>
+      </div>
+    </div>
   );
 }

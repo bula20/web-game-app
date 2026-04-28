@@ -3,14 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Plus, LogIn, Users, Lock, Globe } from 'lucide-react';
 import type { Room, GameType } from '@/types/room';
+
+const GAME_META: Record<string, { icon: string; color: string }> = {
+  chess:    { icon: '♞', color: '#D4ADFC' },
+  checkers: { icon: '◉', color: '#BB90E8' },
+  charades: { icon: '🎨', color: '#F0DCFF' },
+};
 
 export function LobbyPage() {
   const { t } = useTranslation();
@@ -32,20 +35,12 @@ export function LobbyPage() {
 
   useEffect(() => {
     if (!socket || !gameType) return;
-
     socket.emit('lobby:join', { gameType });
-
     socket.on('lobby:rooms', (data: Room[]) => setRooms(data));
-    socket.on('lobby:room_created', (room: Room) => {
-      setRooms(prev => [room, ...prev]);
-    });
+    socket.on('lobby:room_created', (room: Room) => setRooms(prev => [room, ...prev]));
     socket.on('lobby:room_updated', (room: Room) => {
-      // For charades in_progress rooms with open slots — keep/add them in the list
-      const isJoinableCharades = room.gameType === 'charades'
-        && room.status === 'in_progress'
-        && room.players.length < room.maxPlayers;
+      const isJoinableCharades = room.gameType === 'charades' && room.status === 'in_progress' && room.players.length < room.maxPlayers;
       const isJoinable = room.status === 'waiting' || room.status === 'host_away' || isJoinableCharades;
-
       setRooms(prev => {
         const exists = prev.some(r => r._id === room._id);
         if (!isJoinable) return prev.filter(r => r._id !== room._id);
@@ -53,22 +48,10 @@ export function LobbyPage() {
         return [room, ...prev];
       });
     });
-    socket.on('lobby:room_removed', ({ roomId }: { roomId: string }) => {
-      setRooms(prev => prev.filter(r => r._id !== roomId));
-    });
-
-    socket.on('room:joined', ({ room }: { room: Room }) => {
-      navigate(`/room/${room.code}`);
-    });
-
-    socket.on('room:joined_in_progress', ({ room }: { room: Room }) => {
-      navigate(`/game/charades/${room.code}`);
-    });
-
-    socket.on('room:error', ({ message }: { message: string }) => {
-      alert(message);
-    });
-
+    socket.on('lobby:room_removed', ({ roomId }: { roomId: string }) => setRooms(prev => prev.filter(r => r._id !== roomId)));
+    socket.on('room:joined', ({ room }: { room: Room }) => navigate(`/room/${room.code}`));
+    socket.on('room:joined_in_progress', ({ room }: { room: Room }) => navigate(`/game/charades/${room.code}`));
+    socket.on('room:error', ({ message }: { message: string }) => alert(message));
     return () => {
       socket.emit('lobby:leave', { gameType });
       socket.off('lobby:rooms');
@@ -94,7 +77,6 @@ export function LobbyPage() {
     socket.emit('room:leave', { code: user.activeRoomCode });
     const action = pendingAction;
     setPendingAction(null);
-    // Slight delay so the leave fires before create/join
     setTimeout(() => action && action(), 50);
   };
 
@@ -105,9 +87,7 @@ export function LobbyPage() {
         gameType: gameType as GameType,
         isPublic,
         maxPlayers: gameType === 'charades' ? maxPlayers : 2,
-        ...(gameType === 'charades'
-          ? { rounds, drawingTime }
-          : { timerMinutes }),
+        ...(gameType === 'charades' ? { rounds, drawingTime } : { timerMinutes }),
       });
       setShowCreate(false);
     };
@@ -117,11 +97,7 @@ export function LobbyPage() {
   const handleJoinByCode = () => {
     if (!socket || !joinCode.trim()) return;
     const code = joinCode.trim().toUpperCase();
-    const run = () => {
-      socket.emit('room:join', { code });
-      setShowJoinCode(false);
-      setJoinCode('');
-    };
+    const run = () => { socket.emit('room:join', { code }); setShowJoinCode(false); setJoinCode(''); };
     guardAgainstExistingRoom(code, run);
   };
 
@@ -131,184 +107,187 @@ export function LobbyPage() {
   };
 
   const gameNames: Record<string, string> = {
-    chess: t('home.chess'),
-    checkers: t('home.checkers'),
-    charades: t('home.charades'),
+    chess: t('home.chess'), checkers: t('home.checkers'), charades: t('home.charades'),
   };
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  if (!user) { navigate('/login'); return null; }
+
+  const meta = GAME_META[gameType || 'chess'] || GAME_META.chess;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">
-          {t('lobby.title', { game: gameNames[gameType || ''] || gameType })}
-        </h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowJoinCode(true)} variant="outline">
-            <LogIn className="h-4 w-4 mr-2" />
-            {t('lobby.joinByCode')}
-          </Button>
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('lobby.createRoom')}
-          </Button>
+    <div>
+      {/* Header */}
+      <div className="pr-page-head">
+        <div>
+          <h1>{t('lobby.title', { game: gameNames[gameType || ''] || gameType })}</h1>
+          <div className="pr-page-sub">
+            {t('lobby.subtitle', 'Dołącz do pokoju lub stwórz własny')} · {rooms.length} {t('lobby.rooms', 'pokojów')}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="pr-btn pr-btn-secondary" onClick={() => setShowJoinCode(true)}>
+            <LogIn size={15} /> {t('lobby.joinByCode')}
+          </button>
+          <button className="pr-btn pr-btn-primary" onClick={() => setShowCreate(true)}>
+            <Plus size={15} /> {t('lobby.createRoom')}
+          </button>
         </div>
       </div>
 
+      {/* Room list */}
       {rooms.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">{t('lobby.noRooms')}</p>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--pr-text-muted)' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>{meta.icon}</div>
+          <div style={{ fontFamily: 'var(--font-head)', fontSize: 16 }}>{t('lobby.noRooms')}</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rooms.map(room => (
-            <Card key={room._id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {room.isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rooms.map(room => {
+            const m = GAME_META[room.gameType] || GAME_META.chess;
+            const full = room.players.length >= room.maxPlayers;
+            return (
+              <div
+                key={room._id}
+                className="pr-room-card"
+                onClick={() => !full && handleJoinRoom(room.code)}
+                style={{ opacity: full ? 0.6 : 1 }}
+              >
+                <div className="pr-room-icon">{m.icon}</div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 15,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    color: 'var(--pr-text-primary)',
+                  }}>
                     {room.code}
-                  </CardTitle>
-                  <Badge variant={room.players.length < room.maxPlayers ? 'default' : 'secondary'}>
-                    <Users className="h-3 w-3 mr-1" />
-                    {t('lobby.players', { current: room.players.length, max: room.maxPlayers })}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    {room.players.map(p => p.displayName).join(', ')}
+                    {!room.isPublic && <Lock size={13} style={{ color: 'var(--pr-text-muted)' }} />}
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleJoinRoom(room.code)}
-                    disabled={room.players.length >= room.maxPlayers}
-                  >
-                    {t('lobby.join')}
-                  </Button>
+                  <div style={{ fontSize: 13, color: 'var(--pr-text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{t('room.host', 'Host')}: <span style={{ color: 'var(--pr-text-secondary)' }}>{room.players[0]?.displayName}</span></span>
+                    <span>·</span>
+                    <span style={{ textTransform: 'capitalize' }}>{t(`home.${room.gameType}`, room.gameType)}</span>
+                    {room.gameType !== 'charades' && room.timerMinutes && (
+                      <><span>·</span><span>{room.timerMinutes} min</span></>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                <div style={{ fontFamily: 'var(--font-head)', fontWeight: 600, color: 'var(--pr-accent)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Users size={13} style={{ color: 'var(--pr-text-muted)' }} />
+                  {room.players.length}/{room.maxPlayers}
+                </div>
+
+                <button
+                  className={`pr-btn pr-btn-sm ${full ? 'pr-btn-secondary' : 'pr-btn-primary'}`}
+                  disabled={full}
+                  onClick={e => { e.stopPropagation(); if (!full) handleJoinRoom(room.code); }}
+                  style={{ opacity: full ? 0.5 : 1 }}
+                >
+                  {full ? t('lobby.full', 'Pełny') : t('lobby.join')}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Create Room Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent style={{ background: 'linear-gradient(180deg,#141D6A,#0C134F)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }}>
           <DialogHeader>
-            <DialogTitle>{t('lobby.createRoom')}</DialogTitle>
-            <DialogDescription>{gameNames[gameType || '']}</DialogDescription>
+            <DialogTitle style={{ color: 'var(--pr-text-primary)', fontFamily: 'var(--font-head)' }}>{t('lobby.createRoom')}</DialogTitle>
+            <DialogDescription style={{ color: 'var(--pr-text-muted)' }}>{gameNames[gameType || '']}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('lobby.visibility')}</Label>
-              <div className="flex gap-2">
-                <Button variant={isPublic ? 'default' : 'outline'} size="sm" onClick={() => setIsPublic(true)}>
-                  <Globe className="h-4 w-4 mr-1" /> {t('lobby.public')}
-                </Button>
-                <Button variant={!isPublic ? 'default' : 'outline'} size="sm" onClick={() => setIsPublic(false)}>
-                  <Lock className="h-4 w-4 mr-1" /> {t('lobby.private')}
-                </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                {t('lobby.visibility')}
+              </Label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className={`pr-btn pr-btn-sm ${isPublic ? 'pr-btn-primary' : 'pr-btn-secondary'}`} onClick={() => setIsPublic(true)}>
+                  <Globe size={13} /> {t('lobby.public')}
+                </button>
+                <button className={`pr-btn pr-btn-sm ${!isPublic ? 'pr-btn-primary' : 'pr-btn-secondary'}`} onClick={() => setIsPublic(false)}>
+                  <Lock size={13} /> {t('lobby.private')}
+                </button>
               </div>
             </div>
             {gameType === 'charades' ? (
               <>
-                <div className="space-y-2">
-                  <Label>{t('lobby.maxPlayers')}</Label>
-                  <Input
-                    type="number"
-                    min={2}
-                    max={12}
-                    value={maxPlayers}
-                    onChange={e => setMaxPlayers(Number(e.target.value))}
-                  />
+                <div>
+                  <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                    {t('lobby.maxPlayers')}
+                  </Label>
+                  <Input type="number" min={2} max={12} value={maxPlayers} onChange={e => setMaxPlayers(Number(e.target.value))} className="mt-2" style={{ background: 'rgba(5,8,31,.6)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }} />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('lobby.rounds')}</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={rounds}
-                    onChange={e => setRounds(Number(e.target.value))}
-                  />
+                <div>
+                  <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                    {t('lobby.rounds')}
+                  </Label>
+                  <Input type="number" min={1} max={10} value={rounds} onChange={e => setRounds(Number(e.target.value))} className="mt-2" style={{ background: 'rgba(5,8,31,.6)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }} />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('lobby.drawingTime')}</Label>
-                  <Input
-                    type="number"
-                    min={30}
-                    max={120}
-                    value={drawingTime}
-                    onChange={e => setDrawingTime(Number(e.target.value))}
-                  />
+                <div>
+                  <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                    {t('lobby.drawingTime')}
+                  </Label>
+                  <Input type="number" min={30} max={120} value={drawingTime} onChange={e => setDrawingTime(Number(e.target.value))} className="mt-2" style={{ background: 'rgba(5,8,31,.6)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }} />
                 </div>
               </>
             ) : (
-              <div className="space-y-2">
-                <Label>{t('lobby.timerMinutes')}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={timerMinutes}
-                  onChange={e => setTimerMinutes(Number(e.target.value))}
-                />
+              <div>
+                <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  {t('lobby.timerMinutes')}
+                </Label>
+                <Input type="number" min={1} max={60} value={timerMinutes} onChange={e => setTimerMinutes(Number(e.target.value))} className="mt-2" style={{ background: 'rgba(5,8,31,.6)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }} />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button onClick={handleCreate}>{t('lobby.create')}</Button>
+            <button className="pr-btn pr-btn-ghost" onClick={() => setShowCreate(false)}>{t('lobby.cancel')}</button>
+            <button className="pr-btn pr-btn-primary" onClick={handleCreate}>{t('lobby.create')}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Already-in-room confirmation */}
-      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
-        <DialogContent>
+      {/* Already-in-room dialog */}
+      <Dialog open={!!pendingAction} onOpenChange={open => !open && setPendingAction(null)}>
+        <DialogContent style={{ background: 'linear-gradient(180deg,#141D6A,#0C134F)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }}>
           <DialogHeader>
-            <DialogTitle>{t('lobby.alreadyInRoom')}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle style={{ color: 'var(--pr-text-primary)' }}>{t('lobby.alreadyInRoom')}</DialogTitle>
+            <DialogDescription style={{ color: 'var(--pr-text-muted)' }}>
               {t('lobby.alreadyInRoomDesc', { code: user?.activeRoomCode || '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingAction(null)}>
-              {t('lobby.cancel')}
-            </Button>
-            <Button onClick={confirmLeaveAndContinue}>
-              {t('lobby.leaveAndJoin')}
-            </Button>
+            <button className="pr-btn pr-btn-ghost" onClick={() => setPendingAction(null)}>{t('lobby.cancel')}</button>
+            <button className="pr-btn pr-btn-primary" onClick={confirmLeaveAndContinue}>{t('lobby.leaveAndJoin')}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Join by Code Dialog */}
+      {/* Join by Code dialog */}
       <Dialog open={showJoinCode} onOpenChange={setShowJoinCode}>
-        <DialogContent>
+        <DialogContent style={{ background: 'linear-gradient(180deg,#141D6A,#0C134F)', border: '1px solid var(--pr-border-regular)', color: 'var(--pr-text-primary)' }}>
           <DialogHeader>
-            <DialogTitle>{t('lobby.joinByCode')}</DialogTitle>
+            <DialogTitle style={{ color: 'var(--pr-text-primary)' }}>{t('lobby.joinByCode')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('lobby.roomCode')}</Label>
-              <Input
-                value={joinCode}
-                onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
-                placeholder="ABC123"
-                maxLength={6}
-              />
-            </div>
+          <div>
+            <Label style={{ color: 'var(--pr-text-secondary)', fontFamily: 'var(--font-head)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+              {t('lobby.roomCode')}
+            </Label>
+            <input
+              className="pr-input"
+              style={{ marginTop: 8 }}
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
+              placeholder="ABC123"
+              maxLength={6}
+            />
           </div>
           <DialogFooter>
-            <Button onClick={handleJoinByCode}>{t('lobby.join')}</Button>
+            <button className="pr-btn pr-btn-primary" onClick={handleJoinByCode}>{t('lobby.join')}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -66,13 +66,20 @@ export function DisconnectBanner() {
   if (disconnected.size === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {Array.from(disconnected.values()).map(d => (
-        <div
-          key={d.userId}
-          className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800"
-        >
-          ⚠️ {t('game.playerDisconnected', { name: d.displayName, seconds: d.expiresIn })}
+        <div key={d.userId} className="pr-banner">
+          <div>
+            <div style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 14, color: '#FEC5C5' }}>
+              ⚠ {d.displayName} {t('game.disconnected', 'rozłączył/a się')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--pr-text-secondary)', marginTop: 2 }}>
+              {t('game.playerDisconnected', { name: d.displayName, seconds: d.expiresIn })}
+            </div>
+          </div>
+          <div className="pr-banner-countdown">
+            {String(Math.floor(d.expiresIn / 60)).padStart(2, '0')}:{String(d.expiresIn % 60).padStart(2, '0')}
+          </div>
         </div>
       ))}
     </div>
