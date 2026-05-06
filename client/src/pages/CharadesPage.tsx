@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ export function CharadesPage() {
   const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const { socket } = useSocket();
+  const { user, setActiveRoomCode } = useAuth();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -45,6 +47,8 @@ export function CharadesPage() {
   // Drawing state
   const isDrawingRef = useRef(false);
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
+  const lastEmitRef = useRef(0);
+  const lastEmittedIdxRef = useRef(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,6 +116,7 @@ export function CharadesPage() {
     socket.on('charades:game_over', ({ scores: s }: { scores: CharadesScore[] }) => {
       setGameOver(true);
       setScores(s);
+      setActiveRoomCode(null);
     });
 
     socket.on('charades:timer', ({ timeLeft: tl }: { timeLeft: number }) => {
@@ -191,41 +196,56 @@ export function CharadesPage() {
     if (!isDrawer || gameOver || roundOver) return;
     isDrawingRef.current = true;
     currentStrokeRef.current = [getCanvasPoint(e)];
+    lastEmittedIdxRef.current = 0;
+    lastEmitRef.current = 0;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawingRef.current || !isDrawer) return;
     const point = getCanvasPoint(e);
-    currentStrokeRef.current.push(point);
+    const points = currentStrokeRef.current;
+    points.push(point);
 
     // Draw locally
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const points = currentStrokeRef.current;
-    if (points.length < 2) return;
+    if (!ctx || points.length < 2) return;
     ctx.beginPath();
     ctx.strokeStyle = drawColor;
     ctx.lineWidth = drawWidth;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.moveTo(points[points.length - 2].x, points[points.length - 2].y);
     ctx.lineTo(point.x, point.y);
     ctx.stroke();
+
+    // Stream accumulated points since last emit (throttled to ~60fps)
+    if (!socket || !code) return;
+    const now = Date.now();
+    if (now - lastEmitRef.current < 16) return;
+    lastEmitRef.current = now;
+    const segment = points.slice(lastEmittedIdxRef.current);
+    if (segment.length >= 2) {
+      socket.emit('charades:draw', { code, stroke: { points: segment, color: drawColor, width: drawWidth } });
+      // Overlap by 1 so the next segment starts exactly where this one ended
+      lastEmittedIdxRef.current = points.length - 1;
+    }
   };
 
   const handlePointerUp = () => {
     if (!isDrawingRef.current || !isDrawer || !socket || !code) return;
     isDrawingRef.current = false;
 
-    const stroke: Stroke = {
-      points: currentStrokeRef.current,
-      color: drawColor,
-      width: drawWidth,
-    };
-    socket.emit('charades:draw', { code, stroke });
+    // Flush all remaining unsent points
+    const points = currentStrokeRef.current;
+    const remaining = points.slice(lastEmittedIdxRef.current);
+    if (remaining.length >= 2) {
+      socket.emit('charades:draw', { code, stroke: { points: remaining, color: drawColor, width: drawWidth } });
+    }
     currentStrokeRef.current = [];
+    lastEmittedIdxRef.current = 0;
   };
 
   const handleClear = () => {
@@ -243,6 +263,7 @@ export function CharadesPage() {
   const handleLeave = () => {
     if (!window.confirm(t('charades.leaveConfirm'))) return;
     if (socket && code) socket.emit('charades:leave', { code });
+    setActiveRoomCode(null);
     navigate('/');
   };
 
@@ -253,37 +274,76 @@ export function CharadesPage() {
           <DisconnectBanner />
         </div>
         {/* Header */}
-        <div className="flex items-center gap-4 w-full justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">
-              {isDrawer ? t('charades.yourTurnToDraw') : `${currentDrawer} ${t('charades.guessing')}`}
-            </Badge>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, width: '100%', flexWrap: 'wrap',
+        }}>
+          {/* Left: role + word */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{
+              fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 15,
+              color: 'var(--pr-light)',
+              background: 'rgba(255,247,232,0.08)',
+              border: '1px solid var(--pr-border-dark)',
+              borderRadius: 20, padding: '6px 14px',
+            }}>
+              {isDrawer ? t('charades.yourTurnToDraw') : `${currentDrawer} rysuje`}
+            </span>
             {isDrawer && word && (
-              <Badge>{t('charades.draw', { word })}</Badge>
+              <span style={{
+                fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15,
+                color: '#fff',
+                background: 'linear-gradient(180deg, var(--pr-primary), var(--pr-primary-600))',
+                borderRadius: 20, padding: '6px 16px',
+                boxShadow: '0 4px 14px rgba(255,106,0,0.35)',
+              }}>
+                {t('charades.draw', { word })}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Right: round + timer + leave */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {totalCycles !== null && (
-              <Badge variant="secondary">
+              <span style={{
+                fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 14,
+                color: 'var(--pr-light)',
+                background: 'rgba(0,119,255,0.15)',
+                border: '1px solid rgba(0,119,255,0.3)',
+                borderRadius: 20, padding: '5px 14px',
+              }}>
                 {t('charades.round', { current: currentCycle, total: totalCycles })}
-              </Badge>
+              </span>
             )}
-            <div className="text-2xl font-mono font-bold">{timeLeft}s</div>
+            <span style={{
+              fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 26,
+              color: timeLeft <= 10 ? '#FCA5A5' : 'var(--pr-light)',
+              minWidth: 56, textAlign: 'right',
+              transition: 'color .3s',
+            }}>
+              {timeLeft}s
+            </span>
             {!gameOver && (
-              <Button variant="outline" size="sm" onClick={handleLeave}>
+              <button className="pr-btn pr-btn-sm" onClick={handleLeave} style={{
+                whiteSpace: 'nowrap',
+                background: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.4)',
+                color: '#FCA5A5',
+              }}>
                 {t('charades.leaveGame')}
-              </Button>
+              </button>
             )}
           </div>
         </div>
 
         {/* Canvas */}
-        <div className="border-2 border-border rounded-lg overflow-hidden bg-white">
+        <div style={{ borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%' }}>
           <canvas
             ref={canvasRef}
-            width={700}
-            height={500}
-            className="w-full max-w-[700px] cursor-crosshair"
+            width={800}
+            height={580}
+            className="w-full cursor-crosshair"
+            style={{ display: 'block', aspectRatio: '800/580', maxHeight: 'calc(100vh - 220px)' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -331,16 +391,74 @@ export function CharadesPage() {
           </Card>
         )}
 
-        {gameOver && (
-          <Card className="w-full max-w-md text-center">
-            <CardContent className="py-6">
-              <h2 className="text-2xl font-bold mb-2">{t('game.gameOver')}</h2>
-              <Button className="mt-4" onClick={() => navigate('/')}>
-                {t('nav.home')}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {gameOver && (() => {
+          const sorted = [...scores].sort((a, b) => b.points - a.points);
+          const myIdx = sorted.findIndex(s => s.userId === user?.id || s.displayName === user?.username);
+          const myRank = myIdx + 1;
+          const isFirst = myRank === 1;
+          return (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 60,
+              background: 'rgba(4,18,43,0.78)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div className="pr-card" style={{
+                width: 440, textAlign: 'center', padding: '48px 40px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              }}>
+                {isFirst && (
+                  <p style={{
+                    fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 18,
+                    color: 'var(--pr-primary)', margin: 0,
+                    letterSpacing: '.03em',
+                  }}>
+                    {t('game.congratulations')}
+                  </p>
+                )}
+                <h2 style={{
+                  fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 30,
+                  color: isFirst ? 'var(--pr-accent)' : 'var(--pr-light)',
+                  margin: 0,
+                }}>
+                  {myRank > 0 ? t('game.place', { place: myRank }) : t('game.gameOver')}
+                </h2>
+
+                {/* Scoreboard */}
+                <div style={{ width: '100%', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {sorted.map((s, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 14px', borderRadius: 10,
+                      background: s.userId === user?.id || s.displayName === user?.username
+                        ? 'rgba(255,106,0,0.12)' : 'rgba(11,42,91,0.6)',
+                      border: s.userId === user?.id || s.displayName === user?.username
+                        ? '1px solid rgba(255,106,0,0.35)' : '1px solid var(--pr-border-dark)',
+                    }}>
+                      <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 16, color: 'var(--pr-text-muted)', width: 28 }}>
+                        {i + 1}.
+                      </span>
+                      <span style={{ flex: 1, textAlign: 'left', fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 15, color: 'var(--pr-light)' }}>
+                        {s.displayName}
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 15,
+                        color: 'var(--pr-primary)',
+                        background: 'rgba(255,106,0,0.12)', borderRadius: 20, padding: '3px 12px',
+                        border: '1px solid rgba(255,106,0,0.25)',
+                      }}>
+                        {s.points} pkt
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button className="pr-btn pr-btn-primary" style={{ marginTop: 8, width: '100%' }} onClick={() => navigate('/')}>
+                  {t('game.backHome')}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Sidebar: scores + guesses */}

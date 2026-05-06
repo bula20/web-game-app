@@ -129,6 +129,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
           guestId: (socket.isGuest ? socket.userId : null) ?? null,
           displayName: socket.displayName || 'Unknown',
           socketId: socket.id,
+          avatarPreset: socket.avatarPreset,
         }],
         maxPlayers,
         timerMinutes: data.timerMinutes || 10,
@@ -236,6 +237,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         guestId: (socket.isGuest ? socket.userId : null) ?? null,
         displayName: socket.displayName || 'Unknown',
         socketId: socket.id,
+        avatarPreset: socket.avatarPreset,
       };
 
       room.players.push(player);

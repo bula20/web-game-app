@@ -4,6 +4,9 @@ export interface User {
   email?: string;
   isGuest: boolean;
   activeRoomCode?: string | null;
+  avatarPreset?: string;
+  lastUsernameChange?: string | null;
+  createdAt?: string;
 }
 
 export interface ActiveRoomInfo {
@@ -20,12 +23,13 @@ export interface AuthResponse {
 export interface Friend {
   _id: string;
   username: string;
+  avatarPreset?: string;
   online?: boolean;
 }
 
 export interface FriendRequest {
   _id: string;
-  from: { _id: string; username: string };
+  from: { _id: string; username: string; avatarPreset?: string };
   to: { _id: string; username: string };
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;

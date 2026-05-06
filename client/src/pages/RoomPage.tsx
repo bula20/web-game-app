@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
 import { Copy, Send, LogOut, Clock, Users, Globe, Lock } from 'lucide-react';
+import { avatarClass, avatarImgSrc } from '@/lib/avatar';
 import { toast } from 'sonner';
 import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { Room, RoomPlayer } from '@/types/room';
@@ -275,8 +276,8 @@ export function RoomPage() {
 function SettingBox({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div style={{
-      padding: 10, background: 'rgba(5,8,31,.4)',
-      border: '1px solid var(--pr-border-subtle)', borderRadius: 8,
+      padding: 12, background: 'rgba(6,27,63,0.45)',
+      border: '1px solid var(--pr-border-subtle)', borderRadius: 12,
     }}>
       <div style={{ fontSize: 11, color: 'var(--pr-text-muted)', textTransform: 'uppercase', letterSpacing: '.06em', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
         {icon} {label}
@@ -289,11 +290,16 @@ function SettingBox({ icon, label, value }: { icon: React.ReactNode; label: stri
 }
 
 function PlayerCard({ player, isHost, hostLabel }: { player: RoomPlayer; isHost: boolean; hostLabel: string }) {
+  const initials = player.displayName.slice(0, 2).toUpperCase();
+  const src = avatarImgSrc(player.avatarPreset);
+  const cls = avatarClass(player.avatarPreset);
   return (
     <div className="pr-card" style={{ padding: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <div className="pr-avatar pr-avatar-lg" style={{ background: 'linear-gradient(135deg, var(--ink-400), var(--ink-600))' }}>
-          {player.displayName[0]?.toUpperCase()}
+        <div className={`pr-avatar pr-avatar-lg ${cls}`}>
+          {src
+            ? <img src={src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={e => { (e.currentTarget.parentElement as HTMLElement).textContent = initials; }} />
+            : initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{

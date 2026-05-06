@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Globe, LogOut, History, DoorOpen, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { Globe, Bell, Plus, LogOut, History, DoorOpen } from 'lucide-react';
+import { CreateRoomDialog } from '@/components/room/CreateRoomDialog';
+import { ProfilePanel } from '@/components/profile/ProfilePanel';
+import { avatarClass, avatarImgSrc, avatarClassFromId } from '@/lib/avatar';
 
 export function Navbar() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
@@ -25,20 +31,16 @@ export function Navbar() {
     : '?';
 
   return (
+    <>
     <header className="pr-navbar">
       {/* Left: logo + nav links */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <img src="/logo.png" alt="PlayRoom" style={{ height: 100, width: 'auto', display: 'block' }} />
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <img src="/logo.png" alt="PlayRoom" style={{ height: 70, width: 'auto', display: 'block' }} />
+          <span className="pr-logo" style={{ fontSize: 22, lineHeight: 1 }}>PlayRoom</span>
         </Link>
 
         <nav style={{ display: 'flex', gap: 4 }}>
-          <Link
-            to="/lobby/chess"
-            className={`pr-nav-link ${isActive('/lobby') ? 'active' : ''}`}
-          >
-            {t('nav.lobby', 'Lobby')}
-          </Link>
           {user && !user.isGuest && (
             <Link
               to="/history"
@@ -52,7 +54,7 @@ export function Navbar() {
             <Link
               to="/my-room"
               className={`pr-nav-link ${isActive('/my-room') ? 'active' : ''}`}
-              style={{ color: 'var(--pr-warn)' }}
+              style={{ color: 'var(--pr-accent)' }}
             >
               <DoorOpen size={14} />
               {t('nav.myRoom', 'Mój pokój')}
@@ -63,44 +65,44 @@ export function Navbar() {
 
       {/* Right: actions + user */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button className="pr-nav-link" onClick={toggleLanguage} title={t('nav.language')}>
+        <button className="pr-nav-link" onClick={toggleLanguage} title={t('nav.language', 'Język')}>
           <Globe size={15} />
-          <span style={{ fontFamily: 'var(--font-head)', fontSize: 12, fontWeight: 600, letterSpacing: '.05em' }}>
+          <span style={{ fontFamily: 'var(--font-head)', fontSize: 12, fontWeight: 700, letterSpacing: '.06em' }}>
             {i18n.language.toUpperCase()}
           </span>
-        </button>
-
-        <button className="pr-nav-link" style={{ padding: '0 10px', position: 'relative' }}>
-          <Bell size={17} />
         </button>
 
         {user ? (
           <>
             <button
               className="pr-btn pr-btn-primary pr-btn-sm"
-              onClick={() => navigate('/lobby/chess')}
+              onClick={() => setCreateOpen(true)}
             >
               <Plus size={14} /> {t('nav.play', 'Graj')}
             </button>
 
             <button
-              onClick={() => navigate('/history')}
+              onClick={() => setProfileOpen(true)}
               style={{ background: 'none', border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
             >
-              <div className="pr-avatar pr-avatar-md av-1">
-                {initials}
-              </div>
+              {avatarImgSrc(user.avatarPreset) ? (
+                <div className={`pr-avatar pr-avatar-md ${avatarClass(user.avatarPreset)}`}>
+                  <img src={avatarImgSrc(user.avatarPreset)!} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                </div>
+              ) : (
+                <div className={`pr-avatar pr-avatar-md ${user.isGuest ? avatarClassFromId(user.id) : avatarClass(user.avatarPreset)}`}>{initials}</div>
+              )}
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pr-text-primary)', fontFamily: 'var(--font-head)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pr-light)', fontFamily: 'var(--font-head)' }}>
                   {user.username}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--pr-text-muted)' }}>
-                  {user.isGuest ? t('auth.guest', 'Gość') : 'ELO 1486'}
+                  {user.isGuest ? t('auth.guest', 'Gość') : t('nav.player', 'Gracz')}
                 </div>
               </div>
             </button>
 
-            <button className="pr-nav-link" onClick={handleLogout} title={t('nav.logout')}>
+            <button className="pr-nav-link" onClick={handleLogout} title={t('nav.logout', 'Wyloguj')}>
               <LogOut size={15} />
             </button>
           </>
@@ -116,5 +118,9 @@ export function Navbar() {
         )}
       </div>
     </header>
+
+    <CreateRoomDialog open={createOpen} onOpenChange={setCreateOpen} />
+    <ProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} />
+    </>
   );
 }

@@ -16,13 +16,13 @@ type Piece = null | 'w' | 'b' | 'W' | 'B'; // lowercase=regular, uppercase=king
 type Board = Piece[][];
 
 const BOARD_SIZE = 8;
-const SQUARE_SIZE = 64;
+const SQUARE_SIZE = 78;
 
 export function CheckersPage() {
   const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const { socket } = useSocket();
-  const { user } = useAuth();
+  const { user, setActiveRoomCode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -93,6 +93,7 @@ export function CheckersPage() {
     socket.on('checkers:game_over', ({ result: r, reason }: { result: string; reason: string }) => {
       setGameOver(true);
       setResult(`${r} - ${reason}`);
+      setActiveRoomCode(null);
     });
 
     socket.on('checkers:timer_update', ({ white, black }: { white: number; black: number }) => {
@@ -153,6 +154,7 @@ export function CheckersPage() {
 
   const handleResign = () => {
     if (socket && code) socket.emit('checkers:resign', { code });
+    setActiveRoomCode(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -183,46 +185,66 @@ export function CheckersPage() {
     const cols = flipped ? [...Array(BOARD_SIZE).keys()].reverse() : [...Array(BOARD_SIZE).keys()];
 
     return (
-      <div className="border-2 border-foreground/20 rounded inline-block">
-        {rows.map(row => (
-          <div key={row} className="flex">
-            {cols.map(col => {
-              const isDark = (row + col) % 2 === 1;
-              const piece = board[row]?.[col];
-              const isSelected = selectedSquare?.[0] === row && selectedSquare?.[1] === col;
-              const isValid = validMoves.some(([r, c]) => r === row && c === col);
+      <div className="pr-board-frame inline-block">
+        <div style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(217,227,240,0.18)' }}>
+          {rows.map(row => (
+            <div key={row} className="flex">
+              {cols.map(col => {
+                const isDark = (row + col) % 2 === 1;
+                const piece = board[row]?.[col];
+                const isSelected = selectedSquare?.[0] === row && selectedSquare?.[1] === col;
+                const isValid = validMoves.some(([r, c]) => r === row && c === col);
 
-              return (
-                <div
-                  key={col}
-                  className={`relative flex items-center justify-center cursor-pointer transition-colors
-                    ${isDark ? 'bg-amber-800' : 'bg-amber-100'}
-                    ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
-                    ${isValid ? 'ring-2 ring-green-400 ring-inset' : ''}
-                  `}
-                  style={{ width: SQUARE_SIZE, height: SQUARE_SIZE }}
-                  onClick={() => handleSquareClick(row, col)}
-                >
-                  {piece && (
-                    <div
-                      className={`rounded-full border-2 flex items-center justify-center text-sm font-bold
-                        ${piece.toLowerCase() === 'w'
-                          ? 'bg-gray-100 border-gray-300 text-gray-800'
-                          : 'bg-gray-800 border-gray-600 text-gray-100'}
-                      `}
-                      style={{ width: SQUARE_SIZE - 16, height: SQUARE_SIZE - 16 }}
-                    >
-                      {piece === piece.toUpperCase() ? 'K' : ''}
-                    </div>
-                  )}
-                  {isValid && !piece && (
-                    <div className="w-4 h-4 rounded-full bg-green-400/50" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                const baseBg = isDark ? '#0E3270' : '#FFF7E8';
+                const ring = isSelected
+                  ? 'inset 0 0 0 3px var(--pr-primary)'
+                  : isValid
+                    ? 'inset 0 0 0 3px var(--pr-accent)'
+                    : 'none';
+
+                return (
+                  <div
+                    key={col}
+                    className="relative flex items-center justify-center cursor-pointer"
+                    style={{
+                      width: SQUARE_SIZE, height: SQUARE_SIZE,
+                      background: baseBg, boxShadow: ring,
+                      transition: 'background-color .12s',
+                    }}
+                    onClick={() => handleSquareClick(row, col)}
+                  >
+                    {piece && (
+                      <div
+                        style={{
+                          width: SQUARE_SIZE - 16, height: SQUARE_SIZE - 16,
+                          borderRadius: '50%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 16,
+                          background: piece.toLowerCase() === 'w'
+                            ? 'linear-gradient(180deg, #FFFFFF, #E5E7EB)'
+                            : 'linear-gradient(180deg, #1F2937, #0B1220)',
+                          border: piece.toLowerCase() === 'w'
+                            ? '2px solid rgba(0,0,0,0.18)'
+                            : '2px solid rgba(255,255,255,0.18)',
+                          color: piece.toLowerCase() === 'w' ? '#0B1220' : '#FFF7E8',
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.30)',
+                        }}
+                      >
+                        {piece === piece.toUpperCase() ? 'K' : ''}
+                      </div>
+                    )}
+                    {isValid && !piece && (
+                      <div style={{
+                        width: 14, height: 14, borderRadius: '50%',
+                        background: 'rgba(126,211,33,0.55)',
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -260,17 +282,39 @@ export function CheckersPage() {
           )}
         </div>
 
-        {gameOver && (
-          <Card className="w-full max-w-md text-center">
-            <CardContent className="py-6">
-              <h2 className="text-2xl font-bold mb-2">{t('game.gameOver')}</h2>
-              <p className="text-muted-foreground">{result}</p>
-              <Button className="mt-4" onClick={() => navigate('/')}>
-                {t('nav.home')}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {gameOver && (() => {
+          const [winner, reason] = result.split(' - ');
+          const isWin = (winner === 'white' && playerColor === 'w') || (winner === 'black' && playerColor === 'b');
+          const isDraw = winner === 'draw';
+          return (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 60,
+              background: 'rgba(4,18,43,0.78)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div className="pr-card" style={{
+                width: 380, textAlign: 'center', padding: '48px 40px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              }}>
+                <h2 style={{
+                  fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 32,
+                  color: isWin ? 'var(--pr-accent)' : isDraw ? 'var(--pr-light)' : '#FCA5A5',
+                  margin: 0,
+                }}>
+                  {isWin ? t('game.youWin') : isDraw ? t('game.draw') : t('game.youLose')}
+                </h2>
+                {reason && (
+                  <p style={{ color: 'var(--pr-text-secondary)', fontSize: 15, margin: 0 }}>
+                    {t(`game.reason.${reason}`, reason)}
+                  </p>
+                )}
+                <button className="pr-btn pr-btn-primary" style={{ marginTop: 8, width: '100%' }} onClick={() => navigate('/')}>
+                  {t('game.backHome')}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Sidebar: Move History + Chat */}

@@ -36,7 +36,40 @@
     "charades": "Charades",
     "chessDesc": "Classic strategy board game for two players",
     "checkersDesc": "Classic 8x8 checkers board game",
-    "charadesDesc": "Draw and guess with friends (2-12 players)"
+    "charadesDesc": "Draw and guess with friends (2-12 players)",
+    "hero": {
+      "tagline": "Play online with friends",
+      "title": "PlayRoom",
+      "subtitle": "An online platform to play chess, checkers, and charades with your friends.",
+      "ctaCreate": "Create a room",
+      "ctaJoin": "Join a room"
+    },
+    "games": {
+      "title": "Pick a game",
+      "sub": "Three games, one room — pick your vibe."
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "sub": "Four simple steps stand between you and your first match."
+    },
+    "create": {
+      "subtitle": "Configure a new room and invite your friends",
+      "chooseGame": "Pick a game",
+      "requireAuth": "To create a room, please sign in or continue as a guest."
+    },
+    "join": {
+      "subtitle": "Enter the 6-character room code",
+      "requireAuth": "To join a room, please sign in or continue as a guest."
+    },
+    "dashboard": {
+      "greeting": "Hi",
+      "subtitle": "Pick a game or join a room with friends.",
+      "activeRoom": "Active room",
+      "goToRoom": "Back to room",
+      "recent": "Recent matches",
+      "noMatches": "No matches played yet",
+      "viewAll": "See full history"
+    }
   },
   "lobby": {
     "title": "{{game}} Lobby",
@@ -75,7 +108,20 @@
     "promotion": "Choose promotion piece",
     "check": "Check!",
     "playerDisconnected": "{{name}} disconnected. Returns in {{seconds}}s or loses/is removed.",
-    "playerReconnected": "{{name}} reconnected"
+    "playerReconnected": "{{name}} reconnected",
+    "congratulations": "Congratulations!",
+    "place": "Place {{place}}",
+    "backHome": "Back to Home",
+    "reason": {
+      "checkmate": "Checkmate",
+      "resign": "Resignation",
+      "timeout": "Timeout",
+      "stalemate": "Stalemate",
+      "insufficient_material": "Insufficient material",
+      "fifty_move": "50-move rule",
+      "disconnect": "Disconnect",
+      "opponent_left": "Opponent left the game"
+    }
   },
   "charades": {
     "draw": "Draw: {{word}}",
@@ -111,7 +157,10 @@
     "lost": "Lost",
     "drew": "Draw",
     "duration": "Duration: {{minutes}}m {{seconds}}s",
-    "players": "Players"
+    "players": "Players",
+    "pageOf": "Page {{page}} / {{total}}",
+    "previous": "← Previous",
+    "next": "Next →"
   },
   "room": {
     "code": "Room Code: {{code}}",
@@ -130,5 +179,51 @@
     "playing": "In Progress",
     "waiting": "Waiting",
     "status": "Status"
+  },
+  "profile": {
+    "memberSince": "Member since {{date}}",
+    "tabs": {
+      "profile": "Profile",
+      "friends": "Friends",
+      "history": "History"
+    },
+    "historyUnavailable": "History unavailable for guests.",
+    "unlockTitle": "Unlock your full profile",
+    "unlockDesc": "Create an account to change your avatar, track game history, add friends and keep your scores.",
+    "createAccount": "Create account",
+    "chooseAvatar": "Choose avatar",
+    "saveAvatar": "Save avatar",
+    "avatarSaved": "Avatar saved.",
+    "avatarError": "Failed to save avatar.",
+    "stats": {
+      "title": "Stats",
+      "all": "All",
+      "total": "Total",
+      "won": "Won",
+      "lost": "Lost",
+      "drew": "Draws"
+    },
+    "changeUsername": "Change username",
+    "usernameLimit": "Username can be changed once every 7 days.",
+    "currentUsername": "Current: {{username}}",
+    "usernameChanged": "Username changed successfully.",
+    "usernameError": "Failed to change username.",
+    "saving": "Saving…",
+    "changeIn": "Change in {{time}}",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password (min. 6 chars)",
+    "confirmNewPassword": "Confirm new password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "New password must be at least 6 characters.",
+    "passwordChanged": "Password changed successfully.",
+    "passwordError": "Failed to change password.",
+    "addFriend": "Add friend",
+    "requestsCount": "Requests ({{count}})",
+    "friendsCount": "Friends ({{count}})",
+    "noFriends": "No friends yet. Add someone above!",
+    "removeFriend": "Remove friend",
+    "inviteSent": "Friend request sent to {{username}}.",
+    "inviteError": "Failed to send friend request."
   }
 }

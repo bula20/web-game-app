@@ -8,6 +8,7 @@ export interface IRoomPlayer {
   guestId: string | null;
   displayName: string;
   socketId: string;
+  avatarPreset?: string;
 }
 
 export interface IDisconnectedPlayer {
@@ -39,6 +40,7 @@ const roomPlayerSchema = new Schema<IRoomPlayer>({
   guestId: { type: String, default: null },
   displayName: { type: String, required: true },
   socketId: { type: String, required: true },
+  avatarPreset: { type: String, default: undefined },
 }, { _id: false });
 
 const disconnectedPlayerSchema = new Schema<IDisconnectedPlayer>({

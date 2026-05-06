@@ -17,7 +17,7 @@ type Square = string | null;
 type Board = Square[][];
 
 const BOARD_SIZE = 8;
-const SQUARE_SIZE = 64;
+const SQUARE_SIZE = 78;
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
@@ -35,7 +35,7 @@ export function ChessPage() {
   const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const { socket } = useSocket();
-  const { user } = useAuth();
+  const { user, setActiveRoomCode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -120,6 +120,7 @@ export function ChessPage() {
     socket.on('chess:game_over', ({ result: r, reason }: { result: string; reason: string }) => {
       setGameOver(true);
       setResult(`${r} - ${reason}`);
+      setActiveRoomCode(null);
     });
 
     socket.on('chess:timer_update', ({ timeWhite: tw, timeBlack: tb }: { timeWhite: number; timeBlack: number }) => {
@@ -210,6 +211,7 @@ export function ChessPage() {
 
   const handleResign = () => {
     if (socket && code) socket.emit('chess:resign', { code });
+    setActiveRoomCode(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -251,15 +253,15 @@ export function ChessPage() {
     const displayFiles = flipped ? [...FILES].reverse() : FILES;
 
     return (
-      <div className="inline-block">
+      <div className="pr-board-frame inline-block">
         <div className="flex">
           {/* Rank labels column */}
           <div className="flex flex-col" style={{ width: 24 }}>
             {rows.map(row => (
               <div
                 key={row}
-                className="flex items-center justify-center text-xs font-medium text-muted-foreground"
-                style={{ height: SQUARE_SIZE }}
+                className="flex items-center justify-center text-xs font-bold"
+                style={{ height: SQUARE_SIZE, color: 'rgba(255,247,232,0.55)', fontFamily: 'var(--font-head)' }}
               >
                 {RANKS[row] /* RANKS[0]='8', RANKS[7]='1' — maps row index to rank */}
               </div>
@@ -267,7 +269,7 @@ export function ChessPage() {
           </div>
 
           {/* Board */}
-          <div className="border-2 border-foreground/20 rounded">
+          <div style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(217,227,240,0.18)' }}>
             {rows.map(row => (
               <div key={row} className="flex">
                 {cols.map(col => {
@@ -278,15 +280,19 @@ export function ChessPage() {
                   const isValid = validMoves.includes(alg);
                   const isKingCheck = kingInCheckSquare === alg;
 
+                  const baseBg = isLight ? '#FFF7E8' : '#0E3270';
+                  const bg = isKingCheck ? 'rgba(239,68,68,0.55)' : baseBg;
+                  const ring = isSelected ? 'inset 0 0 0 3px var(--pr-primary)' : 'none';
+
                   return (
                     <div
                       key={col}
-                      className={`relative flex items-center justify-center cursor-pointer transition-colors
-                        ${isLight ? 'bg-amber-100' : 'bg-green-700'}
-                        ${isSelected ? 'ring-2 ring-yellow-400 ring-inset' : ''}
-                        ${isKingCheck ? 'bg-red-500/60' : ''}
-                      `}
-                      style={{ width: SQUARE_SIZE, height: SQUARE_SIZE }}
+                      className="relative flex items-center justify-center cursor-pointer"
+                      style={{
+                        width: SQUARE_SIZE, height: SQUARE_SIZE,
+                        background: bg, boxShadow: ring,
+                        transition: 'background-color .12s',
+                      }}
                       onClick={() => handleSquareClick(row, col)}
                     >
                       {piece && (
@@ -397,17 +403,39 @@ export function ChessPage() {
           )}
         </div>
 
-        {gameOver && (
-          <Card className="w-full max-w-md text-center">
-            <CardContent className="py-6">
-              <h2 className="text-2xl font-bold mb-2">{t('game.gameOver')}</h2>
-              <p className="text-muted-foreground">{result}</p>
-              <Button className="mt-4" onClick={() => navigate('/')}>
-                {t('nav.home')}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {gameOver && (() => {
+          const [winner, reason] = result.split(' - ');
+          const isWin = (winner === 'white' && playerColor === 'w') || (winner === 'black' && playerColor === 'b');
+          const isDraw = winner === 'draw';
+          return (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 60,
+              background: 'rgba(4,18,43,0.78)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div className="pr-card" style={{
+                width: 380, textAlign: 'center', padding: '48px 40px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              }}>
+                <h2 style={{
+                  fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 32,
+                  color: isWin ? 'var(--pr-accent)' : isDraw ? 'var(--pr-light)' : '#FCA5A5',
+                  margin: 0,
+                }}>
+                  {isWin ? t('game.youWin') : isDraw ? t('game.draw') : t('game.youLose')}
+                </h2>
+                {reason && (
+                  <p style={{ color: 'var(--pr-text-secondary)', fontSize: 15, margin: 0 }}>
+                    {t(`game.reason.${reason}`, reason)}
+                  </p>
+                )}
+                <button className="pr-btn pr-btn-primary" style={{ marginTop: 8, width: '100%' }} onClick={() => navigate('/')}>
+                  {t('game.backHome')}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Sidebar: Move History + Chat */}

@@ -5,6 +5,17 @@ import { useAuth } from '@/context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+const LABEL_STYLE = {
+  display: 'block',
+  fontFamily: 'var(--font-head)',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '.08em',
+  textTransform: 'uppercase' as const,
+  color: 'rgba(255,247,232,0.65)',
+  marginBottom: 6,
+};
+
 export function LoginPage() {
   const { t } = useTranslation();
   const { login, loginAsGuest } = useAuth();
@@ -22,7 +33,7 @@ export function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch {
-      setError(t('auth.loginError'));
+      setError(t('auth.loginError', 'Nieprawidłowy email lub hasło'));
     } finally {
       setIsLoading(false);
     }
@@ -34,43 +45,33 @@ export function LoginPage() {
       await loginAsGuest();
       navigate('/');
     } catch {
-      setError('Failed to login as guest');
+      setError(t('auth.guestError', 'Nie udało się zalogować jako gość'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-      background: `
-        radial-gradient(900px 600px at 30% 30%, rgba(92,70,156,.35), transparent 65%),
-        var(--ink-900)`,
-    }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <span className="pr-logo" style={{ fontSize: 42 }}>PlayRoom</span>
+    <div className="pr-auth-shell">
+      <div style={{ width: '100%', maxWidth: 460 }} className="fade-up">
+        <div style={{ textAlign: 'center', marginBottom: -48}}>
+          <Link to="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
+            <img src="/logo.png" alt="PlayRoom" style={{ height: 300, width: 'auto' }} />
           </Link>
         </div>
 
-        {/* Card */}
-        <div className="pr-card" style={{ padding: 32 }}>
-          <h1 style={{ fontSize: 28, marginBottom: 6, textAlign: 'center' }}>{t('auth.login')}</h1>
-          <p style={{ color: 'var(--pr-text-secondary)', fontSize: 14, textAlign: 'center', marginBottom: 28 }}>
+        <div className="pr-auth-card">
+          <h1 className="pr-auth-title" style={{ textAlign: 'center' }}>{t('auth.login', 'Zaloguj się')}</h1>
+          <p className="pr-auth-sub" style={{ textAlign: 'center' }}>
             {t('auth.loginSubtitle', 'Zaloguj się i kontynuuj grę.')}
           </p>
 
           {error && (
             <div style={{
-              background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.3)',
-              borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-              color: 'var(--pr-danger)', fontSize: 13,
+              background: 'rgba(239,68,68,0.14)',
+              border: '1px solid rgba(239,68,68,0.36)',
+              borderRadius: 12, padding: '10px 14px', marginBottom: 18,
+              color: '#FCA5A5', fontSize: 13,
             }}>
               {error}
             </div>
@@ -78,13 +79,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={{
-                display: 'block', fontFamily: 'var(--font-head)', fontSize: 12,
-                fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase',
-                color: 'var(--pr-text-secondary)', marginBottom: 6,
-              }}>
-                {t('auth.email')}
-              </label>
+              <label style={LABEL_STYLE}>{t('auth.email', 'Email')}</label>
               <input
                 className="pr-input"
                 type="email"
@@ -95,13 +90,7 @@ export function LoginPage() {
               />
             </div>
             <div>
-              <label style={{
-                display: 'block', fontFamily: 'var(--font-head)', fontSize: 12,
-                fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase',
-                color: 'var(--pr-text-secondary)', marginBottom: 6,
-              }}>
-                {t('auth.password')}
-              </label>
+              <label style={LABEL_STYLE}>{t('auth.password', 'Hasło')}</label>
               <input
                 className="pr-input"
                 type="password"
@@ -114,45 +103,43 @@ export function LoginPage() {
 
             <button
               type="submit"
-              className="pr-btn pr-btn-primary pr-btn-lg"
-              style={{ width: '100%', marginTop: 4 }}
+              className="pr-btn pr-btn-primary pr-btn-lg pr-btn-block"
+              style={{ marginTop: 4 }}
               disabled={isLoading}
             >
-              {isLoading ? '…' : t('auth.login')}
+              {isLoading ? '…' : t('auth.login', 'Zaloguj się')}
             </button>
           </form>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0', color: 'var(--pr-text-muted)', fontSize: 12 }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--pr-border-subtle)' }} />
-            {t('auth.or', 'lub')}
-            <div style={{ flex: 1, height: 1, background: 'var(--pr-border-subtle)' }} />
-          </div>
+          <div className="pr-divider">{t('auth.or', 'lub')}</div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <a
               href={`${API_URL}/api/auth/google`}
-              className="pr-btn pr-btn-secondary pr-btn-lg"
-              style={{ width: '100%', textDecoration: 'none', justifyContent: 'center' }}
+              className="pr-btn-google"
             >
-              {t('auth.loginWithGoogle')}
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.17-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92c1.71-1.57 2.68-3.88 2.68-6.62z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86a5.27 5.27 0 0 1-4.96-3.65H1v2.3A9 9 0 0 0 9 18z"/>
+                <path fill="#FBBC05" d="M4.04 10.77a5.4 5.4 0 0 1 0-3.54v-2.3H1a9 9 0 0 0 0 8.13l3.04-2.29z"/>
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 1 4.93l3.04 2.3A5.27 5.27 0 0 1 9 3.58z"/>
+              </svg>
+              {t('auth.loginWithGoogle', 'Zaloguj z Google')}
             </a>
             <button
-              className="pr-btn pr-btn-ghost pr-btn-lg"
-              style={{ width: '100%' }}
+              className="pr-btn pr-btn-ghost pr-btn-lg pr-btn-block"
               onClick={handleGuest}
               disabled={isLoading}
             >
-              {t('auth.playAsGuest')}
+              {t('auth.playAsGuest', 'Graj jako gość')}
             </button>
           </div>
         </div>
 
-        {/* Footer link */}
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--pr-text-muted)' }}>
-          {t('auth.noAccount')}{' '}
-          <Link to="/register" style={{ color: 'var(--pr-accent)', textDecoration: 'none', fontWeight: 600 }}>
-            {t('auth.register')}
+        <p style={{ textAlign: 'center', marginTop: 22, fontSize: 14, color: 'rgba(255,247,232,0.62)' }}>
+          {t('auth.noAccount', 'Nie masz konta?')}{' '}
+          <Link to="/register" style={{ color: 'var(--pr-primary)', textDecoration: 'none', fontWeight: 700 }}>
+            {t('auth.register', 'Zarejestruj się')}
           </Link>
         </p>
       </div>

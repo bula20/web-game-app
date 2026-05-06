@@ -2,14 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
-import { Search, UserPlus, Send, ArrowLeft, Check, X } from 'lucide-react';
+import { Search, UserPlus, Send, ArrowLeft, Check, X, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { avatarClass, avatarImgSrc } from '@/lib/avatar';
 import type { Friend, FriendRequest } from '@/types/user';
 
 type DmMessage = { from: string; fromId: string; text: string; timestamp: string };
 
-export function Sidebar() {
+export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -46,6 +47,8 @@ export function Sidebar() {
         setChatMessages(prev => [...prev, msg]);
       }
     });
+    // Request current online status now that the listener is registered
+    socket.emit('friend:get_online');
     return () => {
       socket.off('friend:online_status');
       socket.off('friend:request_received');
@@ -55,7 +58,12 @@ export function Sidebar() {
   }, [socket, chatWith]);
 
   const loadFriends = async () => {
-    try { const r = await api.get('/friends'); setFriends(r.data); } catch { /* ignore */ }
+    try {
+      const r = await api.get('/friends');
+      setFriends(r.data);
+      // Re-sync online status after fresh friend list overwrites state
+      socket?.emit('friend:get_online');
+    } catch { /* ignore */ }
   };
   const loadRequests = async () => {
     try { const r = await api.get('/friends/requests'); setRequests(r.data); } catch { /* ignore */ }
@@ -84,7 +92,7 @@ export function Sidebar() {
     if (socket) {
       socket.emit('chat:get_history', { withUserId: friend._id }, (messages: any[]) => {
         setChatMessages(messages.map(m => ({
-          from: m.from === user?.id ? user.username : friend.username,
+          from: m.from === user?.id ? (user?.username ?? '') : friend.username,
           fromId: m.from,
           text: m.content,
           timestamp: m.createdAt,
@@ -115,8 +123,8 @@ export function Sidebar() {
   return (
     <aside className="pr-sidebar">
       {/* Tab switcher */}
-      <div className="pr-sidebar-header">
-        <div className="pr-tabs" style={{ width: '100%' }}>
+      <div className="pr-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="pr-tabs" style={{ flex: 1 }}>
           <button
             className={`pr-tab ${tab === 'friends' ? 'active' : ''}`}
             style={{ flex: 1 }}
@@ -125,8 +133,8 @@ export function Sidebar() {
             {t('friends.title', 'Znajomi')}
             {unreadCount > 0 && (
               <span style={{
-                marginLeft: 6, background: 'var(--pr-accent)', color: '#1A0B2E',
-                fontSize: 10, padding: '1px 5px', borderRadius: 999, fontWeight: 700,
+                marginLeft: 6, background: 'var(--pr-primary)', color: '#FFFFFF',
+                fontSize: 10, padding: '1px 6px', borderRadius: 999, fontWeight: 700,
               }}>{unreadCount}</span>
             )}
           </button>
@@ -138,6 +146,22 @@ export function Sidebar() {
             {t('friends.dm', 'Wiadomości')}
           </button>
         </div>
+        {onCollapse && (
+          <button
+            onClick={onCollapse}
+            title={t('friends.collapse', 'Zwiń panel')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--pr-text-muted)', padding: '4px 6px', borderRadius: 8,
+              display: 'flex', alignItems: 'center', flexShrink: 0,
+              transition: 'color .15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--pr-light)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--pr-text-muted)')}
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
       </div>
 
       {/* Search bar */}
@@ -182,9 +206,7 @@ export function Sidebar() {
                     background: 'rgba(252,211,77,.08)', border: '1px solid rgba(252,211,77,.18)',
                     marginBottom: 4,
                   }}>
-                    <div className="pr-avatar pr-avatar-sm" style={{ background: 'linear-gradient(135deg,#FCD34D,#F59E0B)', color: '#3B2500' }}>
-                      {req.from.username.slice(0, 2).toUpperCase()}
-                    </div>
+                    <SidebarAvatar preset={req.from.avatarPreset} size={28} initials={req.from.username.slice(0, 2).toUpperCase()} />
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--pr-text-primary)' }}>
                       {req.from.username}
                     </span>
@@ -243,12 +265,10 @@ export function Sidebar() {
             <>
               {friends.map(f => (
                 <div key={f._id} className="pr-friend-row" onClick={() => openChat(f)}>
-                  <div style={{ position: 'relative' }}>
-                    <div className="pr-avatar pr-avatar-md">
-                      {f.username.slice(0, 2).toUpperCase()}
-                    </div>
+                  <div style={{ position: 'relative', marginLeft: 10, width: 38, height: 38, flexShrink: 0 }}>
+                    <SidebarAvatar preset={f.avatarPreset} size={38} initials={f.username.slice(0, 2).toUpperCase()} />
                     <span className={`pr-dot ${f.online ? 'pr-dot-online' : ''}`}
-                      style={{ position: 'absolute', right: -2, bottom: -2, border: '2px solid var(--ink-800)' }} />
+                      style={{ position: 'absolute', right: 1, bottom: -1, border: '2px solid #0B2A5B' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -273,23 +293,39 @@ export function Sidebar() {
   );
 }
 
+function SidebarAvatar({ preset, size, initials }: { preset?: string; size: number; initials: string }) {
+  const src = avatarImgSrc(preset);
+  const cls = avatarClass(preset);
+  if (src) {
+    return (
+      <div className={`pr-avatar ${cls}`} style={{ width: size, height: size, flexShrink: 0 }}>
+        <img src={src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+          onError={e => { (e.currentTarget.parentElement as HTMLElement).textContent = initials; }} />
+      </div>
+    );
+  }
+  return (
+    <div className={`pr-avatar ${cls}`} style={{ width: size, height: size, fontSize: size * 0.35, flexShrink: 0 }}>
+      {initials}
+    </div>
+  );
+}
+
 function FriendRow({ friend, onChat }: { friend: Friend; onChat: () => void }) {
   return (
     <div className="pr-friend-row" onClick={onChat}>
-      <div style={{ position: 'relative' }}>
-        <div className="pr-avatar pr-avatar-md">
-          {friend.username.slice(0, 2).toUpperCase()}
-        </div>
+      <div style={{ position: 'relative', marginLeft: 10, width: 36, height: 36, flexShrink: 0 }}>
+        <SidebarAvatar preset={friend.avatarPreset} size={36} initials={friend.username.slice(0, 2).toUpperCase()}/>
         <span
           className={`pr-dot ${friend.online ? 'pr-dot-online' : ''}`}
-          style={{ position: 'absolute', right: -2, bottom: -2, border: '2px solid var(--ink-800)' }}
+          style={{ position: 'absolute', right: 0, bottom: 0, border: '2px solid #0B2A5B' }}
         />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
           {friend.username}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--pr-text-muted)' }}>
+        <div style={{ fontSize: 14, color: 'var(--pr-text-muted)', lineHeight: 1.3 }}>
           {friend.online ? 'online' : 'offline'}
         </div>
       </div>
@@ -308,7 +344,7 @@ function DMChat({
   onBack: () => void;
   myId?: string;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
-  t: (k: string, d?: string) => string;
+  t: ReturnType<typeof useTranslation>['t'];
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -320,7 +356,7 @@ function DMChat({
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--pr-text-muted)', cursor: 'pointer', padding: 4 }}>
           <ArrowLeft size={16} />
         </button>
-        <div className="pr-avatar pr-avatar-sm">{friend.username.slice(0, 2).toUpperCase()}</div>
+        <SidebarAvatar preset={friend.avatarPreset} size={28} initials={friend.username.slice(0, 2).toUpperCase()} />
         <span style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 14 }}>{friend.username}</span>
       </div>
 
@@ -329,12 +365,14 @@ function DMChat({
         {messages.map((m, i) => (
           <div key={i} style={{ alignSelf: m.fromId === myId ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
             <div style={{
-              padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.4,
+              padding: '8px 12px', borderRadius: 14, fontSize: 13, lineHeight: 1.45,
               background: m.fromId === myId
-                ? 'linear-gradient(180deg, var(--pr-accent), #BB90E8)'
-                : 'rgba(29,38,125,.6)',
-              color: m.fromId === myId ? '#1A0B2E' : 'var(--pr-text-primary)',
+                ? 'linear-gradient(180deg, var(--pr-primary), var(--pr-primary-600))'
+                : 'rgba(255,247,232,0.10)',
+              color: m.fromId === myId ? '#FFFFFF' : 'var(--pr-light)',
               border: m.fromId === myId ? 'none' : '1px solid var(--pr-border-subtle)',
+              borderBottomRightRadius: m.fromId === myId ? 4 : 14,
+              borderBottomLeftRadius:  m.fromId === myId ? 14 : 4,
             }}>
               {m.text}
             </div>

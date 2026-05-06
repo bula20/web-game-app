@@ -29,7 +29,8 @@ export function setupSocketServer(httpServer: HttpServer) {
     // Track online status
     if (socket.userId && !socket.isGuest) {
       onlineUsers.set(socket.userId, socket.id);
-      const user = await User.findById(socket.userId).select('friends');
+      const user = await User.findById(socket.userId).select('friends avatarPreset');
+      if (user) socket.avatarPreset = user.avatarPreset ?? 'color:1';
       if (user?.friends) {
         for (const friendId of user.friends) {
           const friendSocketId = onlineUsers.get(friendId.toString());
@@ -40,6 +41,19 @@ export function setupSocketServer(httpServer: HttpServer) {
         }
       }
     }
+
+    // Client requests current online status of all friends (called after Sidebar mounts)
+    socket.on('friend:get_online', async () => {
+      if (!socket.userId || socket.isGuest) return;
+      try {
+        const user = await User.findById(socket.userId).select('friends');
+        if (!user?.friends) return;
+        for (const friendId of user.friends) {
+          const online = onlineUsers.has(friendId.toString());
+          socket.emit('friend:online_status', { userId: friendId.toString(), online });
+        }
+      } catch { /* ignore */ }
+    });
 
     // Setup handlers (presence first so reconnect runs before game handlers register listeners)
     setupPresenceHandler(io, socket);

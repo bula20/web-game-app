@@ -13,7 +13,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
       res.json([]);
       return;
     }
-    const user = await User.findById(authReq.userId).populate('friends', 'username');
+    const user = await User.findById(authReq.userId).populate('friends', 'username avatarPreset');
     res.json(user?.friends || []);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -77,7 +77,7 @@ router.get('/requests', authMiddleware, async (req: Request, res: Response) => {
     }
 
     const requests = await FriendRequest.find({ to: authReq.userId, status: 'pending' })
-      .populate('from', 'username');
+      .populate('from', 'username avatarPreset');
     res.json(requests);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });

@@ -5,6 +5,7 @@ export interface RoomPlayer {
   userId: string | null;
   displayName: string;
   socketId: string;
+  avatarPreset?: string;
 }
 
 export interface Room {

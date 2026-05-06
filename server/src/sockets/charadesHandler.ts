@@ -463,7 +463,7 @@ async function endCharadesGame(io: Server, code: string) {
       gameType: 'charades',
       players: state.players.map(p => ({ userId: p.userId?.startsWith('guest_') ? null : p.userId, displayName: p.displayName })),
       winner: sortedScores[0]?.userId?.startsWith('guest_') ? null : (sortedScores[0]?.userId || null),
-      scores: finalScores,
+      scores: finalScores.map(s => ({ ...s, userId: s.userId?.startsWith('guest_') ? null : s.userId })),
       duration,
       finishedAt: new Date(),
     });

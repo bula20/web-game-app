@@ -13,6 +13,7 @@ interface AuthContextType {
   handleGoogleCallback: (token: string) => Promise<void>;
   logout: () => void;
   setActiveRoomCode: (code: string | null) => void;
+  updateUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -38,6 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setActiveRoomCode = useCallback((code: string | null) => {
     setUser((prev) => (prev ? { ...prev, activeRoomCode: code } : prev));
+  }, []);
+
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev));
   }, []);
 
   useEffect(() => {
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginAsGuest, handleGoogleCallback, logout, setActiveRoomCode }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginAsGuest, handleGoogleCallback, logout, setActiveRoomCode, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

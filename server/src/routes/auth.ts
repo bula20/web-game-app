@@ -46,7 +46,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const token = generateToken({ userId: user._id.toString(), isGuest: false, username: user.username });
     res.status(201).json({
       token,
-      user: { id: user._id, username: user.username, email: user.email },
+      user: { id: user._id, username: user.username, email: user.email, isGuest: false, avatarPreset: user.avatarPreset ?? 'color:1', lastUsernameChange: user.lastUsernameChange ?? null },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -78,7 +78,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const token = generateToken({ userId: user._id.toString(), isGuest: false, username: user.username });
     res.json({
       token,
-      user: { id: user._id, username: user.username, email: user.email },
+      user: { id: user._id, username: user.username, email: user.email, isGuest: false, avatarPreset: user.avatarPreset ?? 'color:1', lastUsernameChange: user.lastUsernameChange ?? null },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -120,6 +120,8 @@ router.get('/me', authMiddleware, (req: Request, res: Response) => {
       email: authReq.user.email,
       isGuest: false,
       activeRoomCode: authReq.user.activeRoomCode ?? null,
+      avatarPreset: authReq.user.avatarPreset ?? 'color:1',
+      lastUsernameChange: authReq.user.lastUsernameChange ?? null,
     });
   }
 });

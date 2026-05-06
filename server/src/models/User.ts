@@ -9,6 +9,8 @@ export interface IUser extends Document {
   isGuest: boolean;
   friends: Types.ObjectId[];
   activeRoomCode: string | null;
+  avatarPreset: string;
+  lastUsernameChange?: Date;
   createdAt: Date;
 }
 
@@ -20,6 +22,8 @@ const userSchema = new Schema<IUser>({
   isGuest: { type: Boolean, default: false },
   friends: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   activeRoomCode: { type: String, default: null },
+  avatarPreset: { type: String, default: 'color:1' },
+  lastUsernameChange: { type: Date },
 }, { timestamps: true });
 
 userSchema.index({ username: 'text' });

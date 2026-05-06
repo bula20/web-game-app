@@ -8,6 +8,7 @@ export interface AuthenticatedSocket extends Socket {
   isGuest?: boolean;
   guestName?: string;
   displayName?: string;
+  avatarPreset?: string;
 }
 
 export function socketAuthMiddleware(socket: AuthenticatedSocket, next: (err?: Error) => void) {

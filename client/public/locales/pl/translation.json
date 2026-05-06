@@ -36,7 +36,40 @@
     "charades": "Kalambury",
     "chessDesc": "Klasyczna gra strategiczna dla dwóch graczy",
     "checkersDesc": "Klasyczne warcaby na planszy 8x8",
-    "charadesDesc": "Rysuj i zgaduj ze znajomymi (2-12 graczy)"
+    "charadesDesc": "Rysuj i zgaduj ze znajomymi (2-12 graczy)",
+    "hero": {
+      "tagline": "Graj online ze znajomymi",
+      "title": "PlayRoom",
+      "subtitle": "Platforma do grania online ze znajomymi w szachy, warcaby i kalambury.",
+      "ctaCreate": "Stwórz pokój",
+      "ctaJoin": "Dołącz do pokoju"
+    },
+    "games": {
+      "title": "Wybierz grę",
+      "sub": "Trzy gry, jeden pokój — wybierz swój klimat."
+    },
+    "howItWorks": {
+      "title": "Jak to działa",
+      "sub": "Cztery proste kroki dzielą Cię od pierwszej partii."
+    },
+    "create": {
+      "subtitle": "Skonfiguruj nowy pokój i zaproś znajomych",
+      "chooseGame": "Wybierz grę",
+      "requireAuth": "Aby utworzyć pokój, zaloguj się lub kontynuuj jako gość."
+    },
+    "join": {
+      "subtitle": "Wpisz 6-znakowy kod pokoju",
+      "requireAuth": "Aby dołączyć do pokoju, zaloguj się lub kontynuuj jako gość."
+    },
+    "dashboard": {
+      "greeting": "Cześć",
+      "subtitle": "Wybierz grę albo dołącz do pokoju ze znajomymi.",
+      "activeRoom": "Aktywny pokój",
+      "goToRoom": "Wróć do pokoju",
+      "recent": "Ostatnie partie",
+      "noMatches": "Brak rozegranych partii",
+      "viewAll": "Zobacz całą historię"
+    }
   },
   "lobby": {
     "title": "Lobby - {{game}}",
@@ -75,7 +108,20 @@
     "promotion": "Wybierz figurę promocji",
     "check": "Szach!",
     "playerDisconnected": "{{name}} rozłączony. Wraca za {{seconds}}s lub przegra/wypada.",
-    "playerReconnected": "{{name}} wrócił"
+    "playerReconnected": "{{name}} wrócił",
+    "congratulations": "Gratulacje!",
+    "place": "{{place}}. miejsce",
+    "backHome": "Wróć do domu",
+    "reason": {
+      "checkmate": "Szach-mat",
+      "resign": "Poddanie się",
+      "timeout": "Przekroczenie czasu",
+      "stalemate": "Pat",
+      "insufficient_material": "Niewystarczający materiał",
+      "fifty_move": "Reguła 50 ruchów",
+      "disconnect": "Rozłączenie",
+      "opponent_left": "Przeciwnik opuścił grę"
+    }
   },
   "charades": {
     "draw": "Rysuj: {{word}}",
@@ -111,7 +157,10 @@
     "lost": "Przegrana",
     "drew": "Remis",
     "duration": "Czas: {{minutes}}m {{seconds}}s",
-    "players": "Gracze"
+    "players": "Gracze",
+    "pageOf": "Strona {{page}} / {{total}}",
+    "previous": "← Poprzednia",
+    "next": "Następna →"
   },
   "room": {
     "code": "Kod pokoju: {{code}}",
@@ -130,5 +179,51 @@
     "playing": "W trakcie",
     "waiting": "Oczekiwanie",
     "status": "Status"
+  },
+  "profile": {
+    "memberSince": "Gracz od {{date}}",
+    "tabs": {
+      "profile": "Profil",
+      "friends": "Znajomi",
+      "history": "Historia"
+    },
+    "historyUnavailable": "Historia niedostępna dla gości.",
+    "unlockTitle": "Odblokuj pełny profil",
+    "unlockDesc": "Załóż konto, żeby zmienić awatar, śledzić historię gier, dodawać znajomych i zachować swoje wyniki.",
+    "createAccount": "Załóż konto",
+    "chooseAvatar": "Wybierz awatar",
+    "saveAvatar": "Zapisz awatar",
+    "avatarSaved": "Awatar został zapisany.",
+    "avatarError": "Błąd zapisu awatara.",
+    "stats": {
+      "title": "Statystyki",
+      "all": "Wszystkie",
+      "total": "Razem",
+      "won": "Wygrane",
+      "lost": "Przegrane",
+      "drew": "Remisy"
+    },
+    "changeUsername": "Zmień nick",
+    "usernameLimit": "Nick można zmienić raz na 7 dni.",
+    "currentUsername": "Obecny: {{username}}",
+    "usernameChanged": "Nick został zmieniony.",
+    "usernameError": "Błąd zmiany nicku.",
+    "saving": "Zapisywanie…",
+    "changeIn": "Zmień za {{time}}",
+    "changePassword": "Zmień hasło",
+    "currentPassword": "Obecne hasło",
+    "newPassword": "Nowe hasło (min. 6 znaków)",
+    "confirmNewPassword": "Potwierdź nowe hasło",
+    "passwordMismatch": "Hasła nie są identyczne.",
+    "passwordTooShort": "Nowe hasło musi mieć min. 6 znaków.",
+    "passwordChanged": "Hasło zostało zmienione.",
+    "passwordError": "Błąd zmiany hasła.",
+    "addFriend": "Dodaj znajomego",
+    "requestsCount": "Zaproszenia ({{count}})",
+    "friendsCount": "Znajomi ({{count}})",
+    "noFriends": "Brak znajomych. Dodaj kogoś powyżej!",
+    "removeFriend": "Usuń znajomego",
+    "inviteSent": "Zaproszenie do {{username}} wysłane.",
+    "inviteError": "Błąd wysyłania zaproszenia."
   }
 }

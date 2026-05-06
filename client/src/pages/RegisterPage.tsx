@@ -3,6 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 
+const LABEL_STYLE = {
+  display: 'block',
+  fontFamily: 'var(--font-head)',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '.08em',
+  textTransform: 'uppercase' as const,
+  color: 'rgba(255,247,232,0.65)',
+  marginBottom: 6,
+};
+
 export function RegisterPage() {
   const { t } = useTranslation();
   const { register } = useAuth();
@@ -17,48 +28,42 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    if (password !== confirmPassword) {
+      setError(t('auth.passwordMismatch', 'Hasła nie są zgodne'));
+      return;
+    }
     setIsLoading(true);
     try {
       await register(username, email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || t('auth.registerError'));
+      setError(err.response?.data?.error || t('auth.registerError', 'Rejestracja nie powiodła się'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const labelStyle = {
-    display: 'block', fontFamily: 'var(--font-head)', fontSize: 12,
-    fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const,
-    color: 'var(--pr-text-secondary)', marginBottom: 6,
-  };
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-      background: `radial-gradient(900px 600px at 70% 30%, rgba(92,70,156,.35), transparent 65%), var(--ink-900)`,
-    }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <span className="pr-logo" style={{ fontSize: 42 }}>PlayRoom</span>
+    <div className="pr-auth-shell">
+      <div style={{ width: '100%', maxWidth: 460 }} className="fade-up">
+        <div style={{ textAlign: 'center', marginBottom: -48 }}>
+          <Link to="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
+            <img src="/logo.png" alt="PlayRoom" style={{ height: 300, width: 'auto' }} />
           </Link>
         </div>
 
-        <div className="pr-card" style={{ padding: 32 }}>
-          <h1 style={{ fontSize: 28, marginBottom: 6, textAlign: 'center' }}>{t('auth.register')}</h1>
-          <p style={{ color: 'var(--pr-text-secondary)', fontSize: 14, textAlign: 'center', marginBottom: 28 }}>
+        <div className="pr-auth-card">
+          <h1 className="pr-auth-title" style={{ textAlign: 'center' }}>{t('auth.register', 'Załóż konto')}</h1>
+          <p className="pr-auth-sub" style={{ textAlign: 'center' }}>
             {t('auth.registerSubtitle', 'Za chwilę będziesz grać.')}
           </p>
 
           {error && (
             <div style={{
-              background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.3)',
-              borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-              color: 'var(--pr-danger)', fontSize: 13,
+              background: 'rgba(239,68,68,0.14)',
+              border: '1px solid rgba(239,68,68,0.36)',
+              borderRadius: 12, padding: '10px 14px', marginBottom: 18,
+              color: '#FCA5A5', fontSize: 13,
             }}>
               {error}
             </div>
@@ -66,41 +71,68 @@ export function RegisterPage() {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={labelStyle}>{t('auth.username')}</label>
-              <input className="pr-input" value={username} onChange={e => setUsername(e.target.value)}
-                placeholder="np. kasia.m" minLength={3} maxLength={30} pattern="[a-zA-Z0-9_]+" required />
+              <label style={LABEL_STYLE}>{t('auth.username', 'Nazwa użytkownika')}</label>
+              <input
+                className="pr-input"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="np. kasia.m"
+                minLength={3}
+                maxLength={30}
+                pattern="[a-zA-Z0-9_]+"
+                required
+              />
             </div>
             <div>
-              <label style={labelStyle}>{t('auth.email')}</label>
-              <input className="pr-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="ty@example.pl" required />
+              <label style={LABEL_STYLE}>{t('auth.email', 'Email')}</label>
+              <input
+                className="pr-input"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="ty@example.pl"
+                required
+              />
             </div>
             <div>
-              <label style={labelStyle}>{t('auth.password')}</label>
-              <input className="pr-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" minLength={6} required />
+              <label style={LABEL_STYLE}>{t('auth.password', 'Hasło')}</label>
+              <input
+                className="pr-input"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                minLength={6}
+                required
+              />
             </div>
             <div>
-              <label style={labelStyle}>{t('auth.confirmPassword')}</label>
-              <input className="pr-input" type="password" value={confirmPassword}
+              <label style={LABEL_STYLE}>{t('auth.confirmPassword', 'Powtórz hasło')}</label>
+              <input
+                className="pr-input"
+                type="password"
+                value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="••••••••" minLength={6} required />
+                placeholder="••••••••"
+                minLength={6}
+                required
+              />
             </div>
             <button
               type="submit"
-              className="pr-btn pr-btn-primary pr-btn-lg"
-              style={{ width: '100%', marginTop: 6 }}
+              className="pr-btn pr-btn-primary pr-btn-lg pr-btn-block"
+              style={{ marginTop: 6 }}
               disabled={isLoading}
             >
-              {isLoading ? '…' : t('auth.register')}
+              {isLoading ? '…' : t('auth.register', 'Załóż konto')}
             </button>
           </form>
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--pr-text-muted)' }}>
-          {t('auth.haveAccount')}{' '}
-          <Link to="/login" style={{ color: 'var(--pr-accent)', textDecoration: 'none', fontWeight: 600 }}>
-            {t('auth.login')}
+        <p style={{ textAlign: 'center', marginTop: 22, fontSize: 14, color: 'rgba(255,247,232,0.62)' }}>
+          {t('auth.haveAccount', 'Masz już konto?')}{' '}
+          <Link to="/login" style={{ color: 'var(--pr-primary)', textDecoration: 'none', fontWeight: 700 }}>
+            {t('auth.login', 'Zaloguj się')}
           </Link>
         </p>
       </div>
