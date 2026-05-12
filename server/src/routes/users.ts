@@ -1,3 +1,7 @@
+// Router operacji na koncie użytkownika - aktywny pokój, awatar, hasło, username,
+// wyszukiwanie userów po nazwie, podgląd profilu publicznego. Wszystkie wymagają
+// poprawnego tokenu JWT (authMiddleware). Część endpointów dodatkowo blokuje
+// gości (np. zmiana hasła nie ma sensu dla konta efemerycznego).
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
@@ -7,7 +11,8 @@ import { guestActiveRooms } from '../sockets/guestState.js';
 
 const router = Router();
 
-// Get current user's active room (if any)
+// GET /me/active-room [auth] - jaki pokój ma aktualnie aktywny user (do auto-redirectu).
+// Jeśli kod wskazuje na pokój, który już nie istnieje (skasowany), czyścimy referencję.
 router.get('/me/active-room', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -42,7 +47,8 @@ router.get('/me/active-room', authMiddleware, async (req: Request, res: Response
   }
 });
 
-// Update avatar preset
+// PUT /me/avatar [auth, !guest] - zmiana awatara. Walidujemy preset regexpem,
+// żeby nie zapisać dowolnego stringa (np. img:../../etc/passwd).
 router.put('/me/avatar', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -64,7 +70,8 @@ router.put('/me/avatar', authMiddleware, async (req: Request, res: Response) => 
   }
 });
 
-// Change password
+// PUT /me/password [auth, !guest] - zmiana hasła wymaga znajomości obecnego hasła.
+// Konta założone przez Google nie mają passwordHash - dla nich endpoint zwraca 400.
 router.put('/me/password', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -91,7 +98,9 @@ router.put('/me/password', authMiddleware, async (req: Request, res: Response) =
   }
 });
 
-// Change username (once per 7 days)
+// PUT /me/username [auth, !guest] - zmiana nazwy użytkownika ograniczona do
+// raz na 7 dni (anti-spam i żeby relacje znajomych nie waliły się przy ciągłej
+// zmianie). 429 Too Many Requests + retryAfter jako milisekundy do odblokowania.
 router.put('/me/username', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -126,7 +135,8 @@ router.put('/me/username', authMiddleware, async (req: Request, res: Response) =
   }
 });
 
-// Search users by username
+// GET /search?q=... [auth] - wyszukiwanie userów po nazwie (do dodawania znajomych).
+// Min. 2 znaki, max 10 wyników, regex case-insensitive, pomijamy siebie i gości.
 router.get('/search', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -151,7 +161,8 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Get user profile
+// GET /:id [auth] - publiczny profil innego usera (username + data utworzenia konta).
+// Inne pola (email, friends, activeRoomCode) są prywatne.
 router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = await User.findById(req.params.id).select('username createdAt');

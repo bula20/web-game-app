@@ -1,3 +1,6 @@
+// Górny pasek nawigacji - logo, linki do historii i my-room, przycisk Create Room
+// (otwiera CreateRoomDialog), avatar otwierający slide-in ProfilePanel, przełącznik
+// języka (PL/EN) i logout. Niezalogowani widzą skrócony wariant z linkami login/register.
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

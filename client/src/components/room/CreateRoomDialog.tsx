@@ -1,3 +1,8 @@
+// Modal "Stwórz pokój" - wybór gry, public/private, max graczy (kalambury),
+// limit czasu (szachy/warcaby), liczba rund i czas rysowania (kalambury).
+// Po wysłaniu room:create i odebraniu room:joined nawigujemy na /room/:code.
+// Dla niezalogowanych (gdy próbują na nieautoryzowanej stronie) wpada
+// loginAsGuest przed wysłaniem - dzięki temu można stworzyć pokój będąc gościem.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

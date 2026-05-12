@@ -1,3 +1,7 @@
+// Zaproszenia do znajomych. Po akceptacji w routes/friends.ts dodajemy obu
+// userów do swoich list friends[] i status zostaje "accepted" (do pokazywania
+// "wysłano - zaakceptowane" w UI). Po odrzuceniu - "rejected".
+// Unikalny indeks (from, to) zapobiega duplikatom zaproszeń.
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IFriendRequest extends Document {
@@ -13,6 +17,7 @@ const friendRequestSchema = new Schema<IFriendRequest>({
   status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
 }, { timestamps: true });
 
+// Indeks dla wyszukiwania pending'ów (skrzynka odbiorcy).
 friendRequestSchema.index({ from: 1, to: 1 }, { unique: true });
 friendRequestSchema.index({ to: 1, status: 1 });
 

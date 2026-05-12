@@ -1,3 +1,7 @@
+// Handler eventów Socket.io dla kalamburów. Najbardziej złożona z trzech gier:
+// rundy z rotującym drawerem, broadcast kresek na canvas live, system zgadywania
+// z tolerancją na literówki (Levenshtein). Słowa pobierane z words.json (PL+EN
+// pogrupowane po kategoriach). Stan wszystkich aktywnych pokojów w activeGames.
 import { Server } from 'socket.io';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -12,7 +16,9 @@ import {
 } from './presenceHandler.js';
 import { guestActiveRooms } from './guestState.js';
 
-// Load word bank
+// Wczytujemy bank słów raz, przy starcie modułu. Struktura JSON-a:
+// { en: { kategoria1: [...], kategoria2: [...] }, pl: {...} }.
+// Awaria odczytu nie wywala serwera - kalambury po prostu nie wystartują.
 let wordBank: Record<string, Record<string, string[]>> = { en: {}, pl: {} };
 try {
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,9 +39,13 @@ interface CharadesPlayer {
 
 interface CharadesGameState {
   players: CharadesPlayer[];
+  // Indeks aktualnego rysującego w players[].
   currentDrawerIndex: number;
+  // Indeks następnego drawera (zwykle currentDrawerIndex+1, ale może się przesuwać
+  // po removePlayer, żeby utrzymać sprawiedliwą rotację).
   nextDrawerSlot: number;
   currentWord: string;
+  // totalCycles = round * players, currentCycle rośnie po każdej rundzie.
   totalCycles: number;
   currentCycle: number;
   drawingTime: number;
@@ -43,14 +53,19 @@ interface CharadesGameState {
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
   lang: string;
+  // Słowa już wybrane w tej grze - unikamy powtórzeń, dopóki bank ma świeże.
   usedWords: Set<string>;
   roomId: unknown;
   roundInProgress: boolean;
-  paused: boolean; // true while drawer is disconnected
+  // Pauza zegara podczas gdy drawer się rozłączył (czeka na powrót do GAME_DISCONNECT_GRACE).
+  paused: boolean;
 }
 
 const activeGames = new Map<string, CharadesGameState>();
 
+// Klasyczna odległość edycyjna (algorytm Wagnera-Fischera, programowanie dynamiczne O(m*n)).
+// Mówi ile pojedynczych operacji (insercja/delecja/substytucja) trzeba, żeby
+// zamienić ciąg a na b. Używana do wykrywania zgadywań "blisko".
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
@@ -65,6 +80,10 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
+// Czy zgadywanie jest "blisko" hasła, ale nie identyczne? Tolerujemy 2 znaki
+// różnicy ALBO 30% długości słowa (dłuższe słowa - większa tolerancja literówek).
+// Dokładne trafienie zwraca false, bo wtedy traktujemy to jako pełną odpowiedź,
+// nie sygnał "ciepło".
 function isClose(guess: string, word: string): boolean {
   const g = guess.trim().toLowerCase();
   const w = word.toLowerCase();
@@ -73,6 +92,8 @@ function isClose(guess: string, word: string): boolean {
   return dist <= 2 || dist <= Math.floor(w.length * 0.3);
 }
 
+// Losuje słowo z banku w danym języku, pomijając te już wybrane w tej grze.
+// Gdy wyczerpiemy pulę - resetujemy usedWords i zaczynamy od nowa.
 function getRandomWord(lang: string, usedWords: Set<string>): string {
   const langWords = wordBank[lang] || wordBank['en'];
   const allWords = Object.values(langWords).flat();
@@ -93,6 +114,9 @@ function findPlayer(state: CharadesGameState, socket: AuthenticatedSocket): numb
   return state.players.findIndex((p) => p.socketId === socket.id);
 }
 
+// Zegar rundy - tyka co sekundę, ale zatrzymuje się gdy drawer rozłączony.
+// Po dojściu do 0 wymusza koniec rundy (endRound) niezależnie od tego, czy
+// ktoś zgadł.
 function startTimer(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
@@ -107,7 +131,13 @@ function startTimer(io: Server, code: string) {
   }, 1000);
 }
 
-// Presence callbacks: drawer-disconnect pauses; final timeout skips the round (drawer) or removes (guesser).
+// Callbacki presence dla kalamburów. Asymetryczne traktowanie:
+//   - DRAWER (rysujący) który nie wrócił po grace period - pomijamy rundę
+//     (drawer zostaje w grze, dostanie kolejną szansę w następnej rundzie),
+//   - GUESSER (zgadujący) który nie wrócił - usuwamy z gry, bo jego nieobecność
+//     nie zatrzymuje rundy.
+// Drawer-disconnect natychmiastowy: zerujemy paused (żeby zegar mógł wybrać
+// timeout naturalnie), drugiej szansy mu już nie damy w tej rundzie.
 registerGameDisconnectHandler('charades', (io, code, userId) => {
   const state = activeGames.get(code);
   if (!state) return;
@@ -115,14 +145,12 @@ registerGameDisconnectHandler('charades', (io, code, userId) => {
   if (idx === -1) return;
 
   if (idx === state.currentDrawerIndex && state.roundInProgress) {
-    // Drawer didn't return in time → skip round, drawer stays in game
     state.paused = false;
     io.to(`room:${code}`).emit('charades:drawer_skipped', {
       displayName: state.players[idx].displayName,
     });
     endRound(io, code);
   } else {
-    // Guesser didn't return → remove from game
     removePlayer(io, code, idx);
   }
 });

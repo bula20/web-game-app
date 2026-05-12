@@ -1,3 +1,7 @@
+// Strona główna. Renderuje dwa różne widoki w zależności od stanu auth:
+//   - niezalogowany: landing page z opisem gier i CTA do rejestracji/loginu,
+//   - zalogowany: dashboard z ActiveRoomCard, RecentMatches i kafelkami gier.
+// Jeden komponent dla obu, bo dużo treści (kafelki gier, jak to działa) jest wspólne.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

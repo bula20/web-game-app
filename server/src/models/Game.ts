@@ -1,3 +1,7 @@
+// Model historii rozegranych partii. Każda partia (chess/checkers/charades) trafia
+// tu po endGame z uczestnikami, wynikiem i listą ruchów lub punktów. Jeden z graczy
+// może być gościem (userId=null), wtedy nie liczymy go do statystyk usera, ale
+// zachowujemy jego displayName w dokumencie.
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IGamePlayer {
@@ -43,12 +47,17 @@ const gameSchema = new Schema<IGame>({
   finishedAt: { type: Date },
 }, { timestamps: true });
 
+// Indeks pod listę partii konkretnego usera (HistoryPage paginacja).
 gameSchema.index({ 'players.userId': 1, createdAt: -1 });
 
 export const Game = mongoose.model<IGame>('Game', gameSchema);
 
+// Limit przechowywanych partii per user, żeby kolekcja Game nie rosła w nieskończoność.
 const MAX_GAMES_PER_USER = 50;
 
+// Po każdej zakończonej partii czyścimy najstarsze rekordy uczestników, jeśli mają
+// więcej niż MAX_GAMES_PER_USER. Goście (id z prefixem "guest_") są pomijani -
+// nie mają persystencji, więc i historii też nie.
 export async function pruneOldGames(userIds: (string | null)[]): Promise<void> {
   const validIds = userIds.filter((id): id is string => !!id && !id.startsWith('guest_'));
   for (const userId of validIds) {

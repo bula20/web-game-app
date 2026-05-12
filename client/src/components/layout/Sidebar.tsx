@@ -1,3 +1,12 @@
+// Sidebar - panel znajomych po lewej stronie aplikacji. Dwa taby:
+//   - "friends": lista znajomych (online/offline z badge), zaproszenia (accept/reject),
+//     wyszukiwanie po nazwie + dodawanie po username,
+//   - "dm": czat DM z wybranym znajomym - historia ostatnich 50 wiadomości,
+//     live odbiór nowych przez chat:direct_message.
+// Listenery socketu na: friend:online_status, friend:request_received, friend:accepted,
+// chat:direct_message. Po unmount socket.off w cleanup, żeby nie nadmiarowo aktualizować
+// stanu.
+// Komponent dla niezalogowanych i gości w ogóle nie jest renderowany (Layout sprawdza).
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
@@ -268,7 +277,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
                   <div style={{ position: 'relative', marginLeft: 10, width: 38, height: 38, flexShrink: 0 }}>
                     <SidebarAvatar preset={f.avatarPreset} size={38} initials={f.username.slice(0, 2).toUpperCase()} />
                     <span className={`pr-dot ${f.online ? 'pr-dot-online' : ''}`}
-                      style={{ position: 'absolute', right: 1, bottom: -1, border: '2px solid #0B2A5B' }} />
+                      style={{ position: 'absolute', right: 1, bottom: 1, border: '2px solid #0B2A5B' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pr-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -1,3 +1,6 @@
+// Strona "Mój pokój" - pokazuje aktualny aktywny pokój usera (jeśli jest) z
+// przyciskiem powrotu albo empty state z linkiem do lobby. Pobiera dane przez
+// GET /api/users/me/active-room (ten sam endpoint czyści też nieaktualne wpisy).
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

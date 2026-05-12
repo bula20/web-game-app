@@ -1,3 +1,5 @@
+// Komponent Label (shadcn/ui). Stylowany wrapper nad natywnym <label> z obsługą
+// stanu peer-disabled (gdy powiązany input jest wyłączony).
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"

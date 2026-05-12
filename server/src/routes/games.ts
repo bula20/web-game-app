@@ -1,10 +1,13 @@
+// Router historii gier - paginowana lista partii zalogowanego usera oraz pobranie
+// pojedynczej partii po id (do replaya/podglądu).
 import { Router, Request, Response } from 'express';
 import { Game } from '../models/Game.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get game history for current user
+// GET /history?page=N&limit=M [auth] - paginowana lista partii usera (max 50/strona).
+// Goście dostają puste wyniki, bo ich partie nie są zapisywane do bazy.
 router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -29,7 +32,9 @@ router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Get single game details
+// GET /:id [auth] - szczegóły jednej partii (board moves dla szachów/warcabów,
+// scores dla kalamburów). Brak własnościowej walidacji - można obejrzeć cudzą
+// grę znając id, co jest świadome (gry są publiczne między uczestnikami).
 router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const game = await Game.findById(req.params.id);

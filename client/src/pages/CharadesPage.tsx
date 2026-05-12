@@ -1,3 +1,12 @@
+// Strona rozgrywki w kalambury. Drawer rysuje na canvasie, pozostali zgadują w czacie.
+// Strokes (kreski) są broadcastowane: w trakcie rysowania - charades:stroke_live
+// (live preview), po podniesieniu palca/myszy - charades:stroke (cała kreska
+// zapisywana w state'cie po stronie serwera). Zgadywanie:
+//   - dokładne trafienie -> charades:correct_guess + punkty,
+//   - prawie -> charades:close_guess (wyświetlamy "ciepło" w UI),
+//   - chybione -> normalna wiadomość w czacie.
+// Po zakończeniu rundy serwer wysyła charades:round_end z punktami i wybiera
+// następnego drawera, dopóki nie skończy się pula rund.
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

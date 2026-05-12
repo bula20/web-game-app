@@ -1,3 +1,11 @@
+// ProfilePanel - rozsuwany od prawej panel z trzema zakładkami:
+//   1. Profil: avatar picker (kolory + obrazki), zmiana username (raz na 7 dni),
+//      zmiana hasła (z weryfikacją obecnego), ostatnie partie z RecentMatches.
+//   2. Znajomi: lista znajomych z DM, lista pending'ów (accept/reject), search,
+//      dodawanie po username.
+//   3. Historia: pełna historia partii z paginacją.
+// Wszystkie operacje na koncie idą REST'em (axios), eventy live (np. nowy znajomy)
+// dochodzą przez socket - po nich refetchujemy listę.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

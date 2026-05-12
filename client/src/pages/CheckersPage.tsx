@@ -1,3 +1,9 @@
+// Strona rozgrywki w warcaby. Logika analogiczna do ChessPage: dwustopniowy ruch
+// (get_moves -> move), plansza obracana zależnie od koloru, race-condition fix
+// przez router state. Specyfika warcabów: bicia są wymuszone, multi-capture
+// (po biciu możesz dalej bić tym samym pionkiem), promocja na damkę przy
+// dotarciu do końca planszy. Detale logiki rozstrzyga serwer (checkersHandler),
+// klient tylko wysyła czytelne zdarzenia i renderuje stan.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

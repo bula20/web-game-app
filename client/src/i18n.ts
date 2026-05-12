@@ -1,3 +1,6 @@
+// Konfiguracja i18next. Tłumaczenia są ładowane lazy z public/locales/{en,pl}/translation.json
+// (HttpBackend), a język wykrywany jest z localStorage (preferencja usera) z fallbackiem
+// na język przeglądarki. Wybrany język zapisujemy w localStorage, żeby utrzymać go między sesjami.
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import HttpBackend from 'i18next-http-backend';

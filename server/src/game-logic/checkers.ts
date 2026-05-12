@@ -1,6 +1,14 @@
-export type Piece = null | 'w' | 'b' | 'W' | 'B'; // lowercase=regular, uppercase=king
+// Silnik warcabów - czyste funkcje bez efektów ubocznych. Plansza 8x8, pionki tylko
+// na czarnych polach (suma indeksów nieparzysta). Konwencja:
+//   'w' / 'b' = zwykły pionek białych / czarnych,
+//   'W' / 'B' = damka (king) - rusza się i bije w 4 strony, na dowolną odległość.
+// Reguły wymuszone: jeśli istnieje możliwe bicie, gracz MUSI bić. Po dotarciu
+// do końcowego rzędu pionek awansuje na damkę.
+export type Piece = null | 'w' | 'b' | 'W' | 'B';
 export type Board = Piece[][];
 
+// Ustawienie startowe: 12 czarnych w 3 górnych rzędach, 12 białych w 3 dolnych.
+// Środkowe 2 rzędy puste.
 export function createInitialBoard(): Board {
   const board: Board = Array(8).fill(null).map(() => Array(8).fill(null));
 
@@ -21,6 +29,10 @@ export function createInitialBoard(): Board {
   return board;
 }
 
+// Zwraca listę legalnych pól docelowych dla pionka na (row, col).
+// Reguła wymuszonego bicia ma 2 poziomy: jeśli ten konkretny pionek może bić,
+// zwracamy tylko bicia; jeśli inny pionek tego samego koloru może bić, ten pionek
+// nie może wcale się ruszyć (pusta lista).
 export function getValidMoves(board: Board, row: number, col: number): [number, number][] {
   const piece = board[row][col];
   if (!piece) return [];
@@ -28,11 +40,9 @@ export function getValidMoves(board: Board, row: number, col: number): [number, 
   const color = piece.toLowerCase();
   const isKing = piece === piece.toUpperCase();
 
-  // First check if there are captures available for this piece
   const captures = getCaptures(board, row, col, color, isKing);
   if (captures.length > 0) return captures;
 
-  // If ANY piece of this color can capture, no regular moves allowed
   if (hasAnyCaptureForColor(board, color)) return [];
 
   // Regular moves

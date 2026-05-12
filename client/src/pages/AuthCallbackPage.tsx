@@ -1,3 +1,6 @@
+// Strona-pośrednik dla Google OAuth. Backend po sukcesie przekierowuje tu z tokenem
+// w query stringu (?token=...). Wyciągamy go, przekazujemy do AuthContext (zapis
+// w localStorage + connectSocket) i wracamy na home. Brak tokenu => login.
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';

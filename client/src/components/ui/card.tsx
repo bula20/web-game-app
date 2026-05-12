@@ -1,3 +1,6 @@
+// Komponent Card (shadcn/ui). Zestaw kompozycyjny: Card + CardHeader + CardTitle +
+// CardDescription + CardContent + CardFooter. Używany na całej aplikacji jako pojemnik
+// na sekcje (lobby, dashboard, profil itd.).
 import * as React from "react"
 import { cn } from "@/lib/utils"
 

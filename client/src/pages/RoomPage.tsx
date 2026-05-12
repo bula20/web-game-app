@@ -1,3 +1,11 @@
+// Strona pokoju gry (poczekalnia). Pokazuje listę graczy, czat, przycisk "Start"
+// (tylko dla hosta, gdy wszyscy są w pokoju), banner "host away" z countdownem.
+//
+// Race-condition fix przy starcie gry: gdy host wciska "Start", serwer wysyła
+// chess:start / checkers:start / charades:start do wszystkich graczy. Tu
+// nasłuchujemy tych eventów i NAVIGUJEMY na stronę gry, przekazując dane przez
+// router state (drugi argument navigate) - dzięki temu strona gry dostaje
+// początkowy stan natychmiast, bez czekania na drugi event po mountcie.
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -56,17 +64,24 @@ export function RoomPage() {
       setHostAwaySeconds(null);
       if (newHostSocketId === socket.id) toast.success('Jesteś teraz hostem pokoju!');
       else toast.info(`Nowy host: ${newHostName}`);
+      // Bezpośredni fetch zamiast lib/api - odświeża pełny stan pokoju po promocji
+      // hosta (event nie zawiera całego pokoju, tylko nowego hosta). Do rozważenia
+      // refaktor na funkcję getRoom() w lib/api.ts.
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      }).then(r => r.json()).then(data => setRoom(data)).catch(() => {});
+      }).then(r => r.json()).then(data => setRoom(data)).catch(() => { /* odśwież się przy następnym evencie */ });
     });
     socket.on('room:closed', () => { toast.error('Pokój został zamknięty'); navigate('/'); });
     socket.on('chat:room_message', (msg: ChatMessage) => setMessages(prev => [...prev, msg]));
+    // Race-condition fix: przekazujemy dane startowe przez router state, żeby
+    // strona gry mogła wyrenderować planszę bez czekania na chess:get_state.
     socket.on('chess:start', (data: any) => navigate(`/game/chess/${code}`, { state: data }));
     socket.on('checkers:start', (data: any) => navigate(`/game/checkers/${code}`, { state: data }));
     socket.on('charades:start', (data: any) => navigate(`/game/charades/${code}`, { state: data }));
+    // Charades pozwala dołączyć do trwającej gry - od razu nawigujemy na grę.
     socket.on('room:joined_in_progress', () => navigate(`/game/charades/${code}`));
 
+    // Initial load - pełny stan pokoju (potrzebny np. po wejściu z /lobby przez navigate).
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     }).then(r => r.json()).then(data => setRoom(data)).catch(() => navigate('/'));

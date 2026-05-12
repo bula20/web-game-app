@@ -1,3 +1,9 @@
+// Handler eventów Socket.io dla warcabów. Struktura analogiczna do chessHandler:
+// dwustopniowy ruch (get_moves -> move), in-memory state w Map activeGames,
+// timery, endGame z zapisem do kolekcji Game. Specyfika warcabów: wymuszone
+// bicia (jeśli jest możliwe bicie - musisz bić) oraz multi-capture - ten sam
+// pionek może bić wiele razy w jednym ruchu, dopóki ma ofiarę. Pole startowe
+// nie resetuje się, dopóki kontynuujemy bicie (continuingFrom).
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
@@ -33,6 +39,8 @@ interface CheckersGameState {
   timeBlack: number;
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
+  // Jeśli ostatni ruch był biciem i ten sam pionek może dalej bić - zapamiętujemy
+  // pole, z którego musi kontynuować. Tura nie zmienia się, dopóki to pole jest ustawione.
   continuingFrom: [number, number] | null;
   moves: string[];
   roomId: unknown;
@@ -172,6 +180,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       return;
     }
 
+    // Multi-capture: jeśli kontynuujemy bicie, gracz może klikać tylko na pionka,
+    // który właśnie bije. Każde inne pole zwraca pustą listę ruchów.
     if (state.continuingFrom) {
       if (position[0] !== state.continuingFrom[0] || position[1] !== state.continuingFrom[1]) {
         socket.emit('checkers:valid_moves', { moves: [] });
@@ -201,6 +211,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
     state.board = result.board;
     state.moves.push(`${from[0]},${from[1]}-${to[0]},${to[1]}`);
 
+    // Bicie wielokrotne: jeżeli ten sam pionek może bić dalej, NIE zmieniamy tury -
+    // zapamiętujemy pole, na którym wylądował, i czekamy na kolejny ruch tego samego gracza.
     if (result.canContinue) {
       state.continuingFrom = to;
       io.to(`room:${code}`).emit('checkers:moved', {
@@ -213,6 +225,7 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       return;
     }
 
+    // Koniec ruchu (zwykły lub po skończonym łańcuchu bić) - zmieniamy turę.
     state.continuingFrom = null;
     state.turn = state.turn === 'w' ? 'b' : 'w';
 
@@ -224,6 +237,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
       moveBy: myColor,
     });
 
+    // Warunki końca: brak legalnych ruchów dla zmienionej tury (zablokowanie),
+    // albo zbicie wszystkich pionków przeciwnika.
     if (!hasMovesForColor(state.board, state.turn)) {
       const winner = state.turn === 'w' ? 'black' : 'white';
       endGame(io, code, winner, 'no_moves');
@@ -248,6 +263,8 @@ export function setupCheckersHandler(io: Server, socket: AuthenticatedSocket) {
   // NOTE: no socket.on('disconnect') — presenceHandler handles grace period.
 }
 
+// Zakończenie partii - identyczna logika jak w chessHandler.endGame
+// (zapis Game, czyszczenie activeRoomCode, prune historii).
 async function endGame(io: Server, code: string, winner: string, reason: string) {
   const state = activeGames.get(code);
   if (!state) return;

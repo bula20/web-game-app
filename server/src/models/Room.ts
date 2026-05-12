@@ -1,3 +1,10 @@
+// Model pokoju gry. Pokój jest pojemnikiem, w którym gracze czekają i ostatecznie
+// rozgrywają partię. Przepływ statusów:
+//   waiting       - utworzony, host dodaje graczy, czeka na start.
+//   host_away     - host stracił połączenie; pokój żyje 120 s, czekając na powrót.
+//   in_progress   - gra trwa (zegary tykają, eventy chess:* / checkers:* / charades:*).
+//   finished      - gra skończona; rekord pozostaje w bazie do końca migracji,
+//                   a zwykle endGame od razu po zapisie do Game kasuje pokój.
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export type GameType = 'chess' | 'checkers' | 'charades';
@@ -11,6 +18,9 @@ export interface IRoomPlayer {
   avatarPreset?: string;
 }
 
+// Wpis dla gracza, który stracił połączenie - klient pokazuje banner z countdownem
+// liczonym od disconnectedAt + expiresIn. Po wygaśnięciu wpisu (presenceHandler)
+// gracz jest usuwany z pokoju lub partia kończy się walkowerem.
 export interface IDisconnectedPlayer {
   userId: Types.ObjectId | null;
   guestId: string | null;
@@ -30,6 +40,7 @@ export interface IRoom extends Document {
   timerMinutes: number;
   rounds: number;
   drawingTime: number;
+  // Timestamp od którego liczy się 120 s ochrony hosta (HOST_AWAY_TTL).
   hostDisconnectedAt: Date | null;
   disconnectedPlayers: IDisconnectedPlayer[];
   createdAt: Date;
@@ -66,6 +77,7 @@ const roomSchema = new Schema<IRoom>({
   disconnectedPlayers: { type: [disconnectedPlayerSchema], default: [] },
 }, { timestamps: true });
 
+// Indeks pod zapytania w Lobby (lista publicznych pokojów konkretnej gry, status waiting).
 roomSchema.index({ gameType: 1, isPublic: 1, status: 1 });
 
 export const Room = mongoose.model<IRoom>('Room', roomSchema);

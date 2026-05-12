@@ -1,3 +1,9 @@
+// Lobby konkretnej gry (chess/checkers/charades). Pokazuje listę dostępnych
+// publicznych pokojów, pozwala stworzyć nowy lub dołączyć po kodzie. Listę
+// pokojów subskrybujemy przez socket (lobby:join), serwer wysyła aktualizacje
+// (lobby:room_created/updated/removed) - dzięki temu UI reaguje live na zmiany.
+// Jeśli user ma już aktywny pokój, zamiast przejścia pokazujemy dialog z pytaniem
+// czy najpierw wyjść (guardAgainstExistingRoom).
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

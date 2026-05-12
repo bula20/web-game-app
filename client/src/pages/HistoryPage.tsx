@@ -1,3 +1,6 @@
+// Strona historii partii zalogowanego usera. Paginacja po stronie serwera
+// (10 partii na stronę), wynik per partia (won/lost/drew) liczony lokalnie
+// na podstawie pól GameHistory. Partie kalamburów - wygrywa najlepszy w punktach.
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
@@ -26,7 +29,7 @@ export function HistoryPage() {
         setGames(res.data.games);
         setTotalPages(res.data.pages);
       })
-      .catch(() => {})
+      .catch(() => { /* przy błędzie pokażemy pustą listę */ })
       .finally(() => setIsLoading(false));
   }, [page]);
 

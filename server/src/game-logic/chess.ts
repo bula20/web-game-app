@@ -1,6 +1,11 @@
 // ============================================================================
 // Custom Chess Engine — zero external dependencies
 // ============================================================================
+// Silnik szachowy bez zewnętrznych bibliotek - czyste funkcje operujące
+// na strukturze stanu (board + metadane). Plansza 8x8: board[0]=rank 8 (czarne
+// na górze), board[7]=rank 1 (białe na dole). Wielkie litery=białe, male=czarne.
+// Implementuje pełne zasady FIDE: roszada, en passant, promocja, mat/pat,
+// reguła 50 ruchów oraz niewystarczający materiał.
 
 // --- Types ---
 
@@ -108,6 +113,9 @@ function cloneState(state: ChessState): ChessState {
 
 // Check if a square is attacked by any piece of the given color.
 // Uses "reverse ray" approach: look outward from the target square.
+// Sprawdza czy dane pole jest atakowane przez figury kolorow byColor.
+// Zamiast iterowac po wszystkich figurach przeciwnika, "wysylamy promienie"
+// z atakowanego pola we wszystkich kierunkach - duzo szybsze przy wykrywaniu szacha.
 function isSquareAttackedBy(board: Board, row: number, col: number, byColor: Color): boolean {
   // 1. Pawn attacks
   const pawnDir = byColor === 'w' ? 1 : -1; // white pawns attack from below (higher row)

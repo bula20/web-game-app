@@ -1,3 +1,5 @@
+// Karta na dashboardzie pokazywana, gdy zalogowany użytkownik ma aktywny pokój
+// (activeRoomCode). Klik prowadzi na /my-room, skąd można wrócić do trwającej gry.
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { DoorOpen, ArrowRight } from 'lucide-react';

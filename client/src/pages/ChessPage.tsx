@@ -1,3 +1,14 @@
+// Strona rozgrywki w szachy. Plansza 8x8 renderowana ręcznie z absolutnie pozycjonowanymi
+// figurami. Wzorzec dwustopniowego ruchu: kliknięcie figury -> chess:get_moves -> klient
+// pokazuje legalne pola (validMoves) -> kliknięcie pola docelowego -> chess:move.
+//
+// playerColorRef: ref do koloru gracza, żeby callbacki socket.on (zarejestrowane
+// raz na mount) miały zawsze aktualną wartość. useState alone bystąpiłby ze stale
+// closure przy nadejściu eventu po remount/reconnect.
+//
+// Plansza obraca się w zależności od koloru gracza - białe zawsze na dole z perspektywy
+// danego gracza. Konwersje squareToAlgebraic / algebraicToSquare między indeksami
+// (row, col) a notacją "e4".
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +32,14 @@ const SQUARE_SIZE = 78;
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
+// Zamiana pary (row, col) na notację algebraiczną. row=0 to rank 8 (góra planszy).
+// Kolumny a-h to kody znaków 97-104 (a=97).
 function squareToAlgebraic(row: number, col: number): string {
   return String.fromCharCode(97 + col) + String(8 - row);
 }
 
+// Odwrotne mapowanie - "e4" -> [row, col]. Używane gdy serwer odpowiada listą
+// legalnych ruchów w notacji algebraicznej, a my chcemy podświetlić pola.
 function algebraicToSquare(sq: string): [number, number] {
   const col = sq.charCodeAt(0) - 97;
   const row = 8 - parseInt(sq[1], 10);
@@ -55,6 +70,8 @@ export function ChessPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
 
+  // Ref synchronizowany z playerColor - listenery socketu (rejestrowane raz w useEffect)
+  // czytają z .current zamiast z closure'owego playerColor, który byłby przestarzały.
   const playerColorRef = useRef(playerColor);
   playerColorRef.current = playerColor;
 
@@ -113,13 +130,15 @@ export function ChessPage() {
       setValidMoves(data.moves);
     });
 
-    socket.on('chess:invalid_move', ({ message }: { message: string }) => {
-      console.warn('Invalid move:', message);
-    });
+    // Serwer odrzucił ruch (np. nie twoja tura) - ignorujemy cicho, UI sam pokaże
+    // poprzedni stan, bo nie odebraliśmy chess:moved.
+    socket.on('chess:invalid_move', () => { /* ignorujemy */ });
 
     socket.on('chess:game_over', ({ result: r, reason }: { result: string; reason: string }) => {
       setGameOver(true);
       setResult(`${r} - ${reason}`);
+      // Czyścimy activeRoomCode w AuthContext, żeby auto-redirect nie wciągał
+      // gracza z powrotem do skończonego pokoju, gdy wejdzie na "/".
       setActiveRoomCode(null);
     });
 
@@ -132,12 +151,14 @@ export function ChessPage() {
       setMessages(prev => [...prev, msg]);
     });
 
-    // Use router state if available
+    // Stan z router state - przekazany przez RoomPage po chess:start (race-condition fix).
+    // Dzięki temu plansza renderuje się natychmiast, bez czekania na refetch.
     if (location.state?.white && location.state?.board) {
       initFromData(location.state as any);
     }
 
-    // Request current state (race condition fix)
+    // Fallback: na wypadek wejścia bez state'a (np. odświeżenie strony) prosimy
+    // serwer o świeży snapshot. Jeśli partia trwa, dostaniemy chess:state.
     socket.emit('chess:get_state', { code });
 
     return () => {

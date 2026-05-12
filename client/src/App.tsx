@@ -1,3 +1,7 @@
+// Główny komponent aplikacji - definiuje routing i drzewo providerów. Kolejność
+// providerów ma znaczenie: SocketProvider używa AuthContext (token JWT do auth handshake),
+// więc AuthProvider musi być wyżej. Toaster (sonner) renderowany jest globalnie do
+// wyświetlania toastów z dowolnego miejsca w aplikacji.
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SocketProvider } from '@/context/SocketContext';
@@ -15,6 +19,11 @@ import { CharadesPage } from '@/pages/CharadesPage';
 import { MyRoomPage } from '@/pages/MyRoomPage';
 import { Toaster } from 'sonner';
 
+// Wrapper dla tras wymagających autoryzacji. Podczas ładowania sesji (sprawdzanie
+// tokenu w localStorage przez /auth/me) pokazujemy ekran ładowania, żeby uniknąć
+// migotania - inaczej brak usera na chwilę spowodowałby redirect na /login mimo
+// ważnego tokenu. Goście są traktowani jako zalogowani (user != null), więc też
+// przechodzą przez ten wrapper.
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <div className="flex items-center justify-center min-h-[80vh]">Loading...</div>;

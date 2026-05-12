@@ -1,3 +1,6 @@
+// Strona rejestracji. Walidacja po stronie klienta (długość pól, zgodność haseł)
+// jako pierwszy filtr, ale autorytatywna walidacja jest na serwerze (Zod schema
+// w routes/auth.ts) - pokażemy błąd jeśli serwer odrzuci.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

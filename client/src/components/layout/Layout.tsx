@@ -1,3 +1,7 @@
+// Główny layout aplikacji - Navbar na górze, opcjonalny Sidebar po lewej (znajomi/DM,
+// tylko dla zalogowanych nie-gości), <Outlet /> z React Router renderujący zawartość
+// strony. Stan zwinięcia sidebara zapisujemy w localStorage, żeby preferencja
+// przeżywała odświeżenie.
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';

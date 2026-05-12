@@ -1,3 +1,6 @@
+// Router relacji znajomych - lista, wysyłanie/akceptowanie/odrzucanie zaproszeń,
+// usuwanie znajomych. Wszystkie endpointy wymagają zalogowania (authMiddleware) i
+// goście dostają puste odpowiedzi / 403, bo nie mają persystencji znajomych.
 import { Router, Request, Response } from 'express';
 import { User } from '../models/User.js';
 import { FriendRequest } from '../models/FriendRequest.js';
@@ -5,7 +8,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get friends list
+// GET / [auth] - lista przyjaciół z populacją podstawowych danych. Goście dostają [].
 router.get('/', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -20,7 +23,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Send friend request
+// POST /request [auth, !guest] - wysłanie zaproszenia po nazwie usera. Sprawdzamy:
+// (1) czy target istnieje, (2) czy nie próbujesz dodać siebie, (3) czy nie ma już
+// zaproszenia w którąkolwiek stronę, (4) czy nie jesteście już znajomymi.
 router.post('/request', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -67,7 +72,7 @@ router.post('/request', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Get pending friend requests
+// GET /requests [auth] - skrzynka odbiorcza pending'ów z populacją "from".
 router.get('/requests', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -84,7 +89,8 @@ router.get('/requests', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Accept friend request
+// POST /accept/:requestId [auth] - akceptacja zaproszenia. Po sukcesie dodajemy
+// obu userów do friends[] $addToSet (zapobiega duplikatom przy retry'ach).
 router.post('/accept/:requestId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -111,7 +117,8 @@ router.post('/accept/:requestId', authMiddleware, async (req: Request, res: Resp
   }
 });
 
-// Reject friend request
+// POST /reject/:requestId [auth] - odrzucenie zaproszenia. Zaproszenie zostaje
+// w bazie ze statusem rejected (żeby ten sam user nie spamował kolejnymi zaproszeniami).
 router.post('/reject/:requestId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
@@ -129,7 +136,7 @@ router.post('/reject/:requestId', authMiddleware, async (req: Request, res: Resp
   }
 });
 
-// Remove friend
+// DELETE /:friendId [auth] - usunięcie znajomego z obu list. $pull bezpieczne na braku.
 router.delete('/:friendId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;

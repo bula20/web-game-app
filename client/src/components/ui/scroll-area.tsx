@@ -1,3 +1,5 @@
+// Komponent ScrollArea (shadcn/ui na bazie @radix-ui/react-scroll-area). Customowy
+// scrollbar - używany w Sidebar (lista znajomych), liście pokojów w lobby, czacie.
 import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 import { cn } from "@/lib/utils"
