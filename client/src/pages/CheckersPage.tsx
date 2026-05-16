@@ -46,12 +46,26 @@ export function CheckersPage() {
   const [moveHistory, setMoveHistory] = useState<{ move: string; color: 'w' | 'b' }[]>([]);
 
   const playerColorRef = useRef(playerColor);
-  playerColorRef.current = playerColor;
+  useEffect(() => { playerColorRef.current = playerColor; }, [playerColor]);
 
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [squareSize, setSquareSize] = useState(SQUARE_SIZE);
   const historyEndRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll move history to bottom
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const { width, height } = e.contentRect;
+      const byW = Math.floor((width - 4) / 8);
+      const byH = Math.floor((height - 4) / 8);
+      setSquareSize(Math.max(38, Math.min(SQUARE_SIZE, byW, byH)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [moveHistory]);
@@ -113,7 +127,7 @@ export function CheckersPage() {
 
     // Use router state if available (passed from RoomPage) for instant init
     if (location.state?.board && location.state?.playerColor) {
-      initFromData(location.state as any);
+      initFromData(location.state as Parameters<typeof initFromData>[0]);
     }
 
     // Request current game state (handles race condition where checkers:start was missed)
@@ -213,7 +227,7 @@ export function CheckersPage() {
                     key={col}
                     className="relative flex items-center justify-center cursor-pointer"
                     style={{
-                      width: SQUARE_SIZE, height: SQUARE_SIZE,
+                      width: squareSize, height: squareSize,
                       background: baseBg, boxShadow: ring,
                       transition: 'background-color .12s',
                     }}
@@ -222,7 +236,7 @@ export function CheckersPage() {
                     {piece && (
                       <div
                         style={{
-                          width: SQUARE_SIZE - 16, height: SQUARE_SIZE - 16,
+                          width: squareSize - 16, height: squareSize - 16,
                           borderRadius: '50%',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 16,
@@ -256,24 +270,26 @@ export function CheckersPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 flex flex-col items-center gap-4">
-        <div className="w-full max-w-md">
+    <div className="flex h-full gap-4 overflow-hidden">
+      <div className="flex flex-col items-center gap-2 flex-1 min-w-0 overflow-hidden py-1">
+        <div className="w-full shrink-0">
           <DisconnectBanner />
         </div>
-        <div className="text-2xl font-mono font-bold">
+        <div className="text-xl font-mono font-bold shrink-0">
           {formatTime(playerColor === 'w' ? timeBlack : timeWhite)}
         </div>
 
-        {board.length > 0 ? renderBoard() : (
-          <div className="text-muted-foreground">{t('game.waiting')}</div>
-        )}
+        <div ref={boardContainerRef} className="flex-1 w-full flex items-center justify-center min-h-0">
+          {board.length > 0 ? renderBoard() : (
+            <div className="text-muted-foreground">{t('game.waiting')}</div>
+          )}
+        </div>
 
-        <div className="text-2xl font-mono font-bold">
+        <div className="text-xl font-mono font-bold shrink-0">
           {formatTime(playerColor === 'w' ? timeWhite : timeBlack)}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap justify-center pb-1">
           <Badge variant={isMyTurn ? 'default' : 'secondary'}>
             {isMyTurn ? t('game.yourTurn') : t('game.opponentTurn')}
           </Badge>
@@ -299,7 +315,7 @@ export function CheckersPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <div className="pr-card" style={{
-                width: 380, textAlign: 'center', padding: '48px 40px',
+                width: 'min(380px, 92vw)', textAlign: 'center', padding: '48px 40px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
               }}>
                 <h2 style={{
@@ -324,11 +340,11 @@ export function CheckersPage() {
       </div>
 
       {/* Sidebar: Move History + Chat */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 w-80 shrink-0 h-full min-h-0">
         {/* Move History */}
-        <Card className="flex flex-col h-[280px]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">{t('game.moveHistory', 'Move History')}</CardTitle>
+        <Card className="flex flex-col flex-1 min-h-0">
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-base">{t('game.moveHistory', 'Move History')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
@@ -351,9 +367,9 @@ export function CheckersPage() {
         </Card>
 
         {/* Chat */}
-        <Card className="flex flex-col h-[300px]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Chat</CardTitle>
+        <Card className="flex flex-col h-72 shrink-0">
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-base">Chat</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 pb-3">
             <ScrollArea className="flex-1 min-h-0 mb-3">

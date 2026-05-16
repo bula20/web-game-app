@@ -58,9 +58,9 @@ export function LoginPage() {
   return (
     <div className="pr-auth-shell">
       <div style={{ width: '100%', maxWidth: 460 }} className="fade-up">
-        <div style={{ textAlign: 'center', marginBottom: -48}}>
+        <div className="pr-auth-logo-wrap">
           <Link to="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
-            <img src="/logo.png" alt="PlayRoom" style={{ height: 300, width: 'auto' }} />
+            <img src="/logo.png" alt="PlayRoom" className="pr-auth-logo" />
           </Link>
         </div>
 

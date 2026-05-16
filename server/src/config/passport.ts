@@ -34,10 +34,16 @@ export function configurePassport() {
                 }
               }
 
-              // Brak konta - tworzymy nowe. Username musi byc unikalny, wiec doklejamy
-              // sufiks z timestampu w base36, by uniknac kolizji nazw.
+              // Brak konta - tworzymy nowe. Jezeli bazowa nazwa jest zajeta, doklejamy
+              // kolejny licznik (_2, _3, ...) az znajdziemy wolna.
+              const baseName = (profile.displayName ?? 'user').replace(/\s+/g, '_').toLowerCase();
+              let candidate = baseName;
+              let suffix = 2;
+              while (await User.exists({ username: candidate })) {
+                candidate = `${baseName}_${suffix++}`;
+              }
               user = await User.create({
-                username: profile.displayName?.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now().toString(36),
+                username: candidate,
                 // Fallback emaila gdy Google nie zwroci adresu - dziwny edge case ale sie zdarza.
                 email: email || `${profile.id}@google.oauth`,
                 googleId: profile.id,

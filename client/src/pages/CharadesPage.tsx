@@ -64,6 +64,33 @@ export function CharadesPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [guesses]);
 
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const drawStroke = (stroke: Stroke) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || stroke.points.length < 2) return;
+
+    ctx.beginPath();
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    ctx.stroke();
+  };
+
   useEffect(() => {
     if (!socket || !code) return;
 
@@ -165,33 +192,6 @@ export function CharadesPage() {
     };
   }, [socket, code]);
 
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
-
-  const drawStroke = (stroke: Stroke) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx || stroke.points.length < 2) return;
-
-    ctx.beginPath();
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-    for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-    }
-    ctx.stroke();
-  };
-
   const getCanvasPoint = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
@@ -277,8 +277,8 @@ export function CharadesPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 flex flex-col items-center gap-4">
+    <div className="flex h-full gap-4 overflow-hidden">
+      <div className="flex flex-col gap-3 flex-1 min-w-0 overflow-y-auto">
         <div className="w-full">
           <DisconnectBanner />
         </div>
@@ -346,13 +346,13 @@ export function CharadesPage() {
         </div>
 
         {/* Canvas */}
-        <div style={{ borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%' }}>
+        <div style={{ borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%', flex: '1 1 0', minHeight: 0 }}>
           <canvas
             ref={canvasRef}
             width={800}
             height={580}
-            className="w-full cursor-crosshair"
-            style={{ display: 'block', aspectRatio: '800/580', maxHeight: 'calc(100vh - 220px)' }}
+            className="w-full h-full cursor-crosshair"
+            style={{ display: 'block', objectFit: 'contain' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -362,12 +362,12 @@ export function CharadesPage() {
 
         {/* Drawing tools */}
         {isDrawer && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex gap-1">
+          <div className="pr-draw-tools flex items-center gap-2 flex-wrap justify-center w-full">
+            <div className="flex gap-1 flex-wrap justify-center">
               {COLORS.map(color => (
                 <button
                   key={color}
-                  className={`w-8 h-8 rounded-full border-2 ${drawColor === color ? 'border-foreground scale-110' : 'border-border'}`}
+                  className={`pr-color-swatch rounded-full border-2 ${drawColor === color ? 'border-foreground scale-110' : 'border-border'}`}
                   style={{ backgroundColor: color }}
                   onClick={() => setDrawColor(color)}
                 />
@@ -377,7 +377,7 @@ export function CharadesPage() {
               {WIDTHS.map(w => (
                 <button
                   key={w}
-                  className={`w-8 h-8 rounded flex items-center justify-center border ${drawWidth === w ? 'border-foreground bg-muted' : 'border-border'}`}
+                  className={`pr-width-swatch rounded flex items-center justify-center border ${drawWidth === w ? 'border-foreground bg-muted' : 'border-border'}`}
                   onClick={() => setDrawWidth(w)}
                 >
                   <div className="rounded-full bg-foreground" style={{ width: w, height: w }} />
@@ -412,7 +412,7 @@ export function CharadesPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <div className="pr-card" style={{
-                width: 440, textAlign: 'center', padding: '48px 40px',
+                width: 'min(440px, 92vw)', textAlign: 'center', padding: '48px 40px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
               }}>
                 {isFirst && (
@@ -471,9 +471,9 @@ export function CharadesPage() {
       </div>
 
       {/* Sidebar: scores + guesses */}
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4 w-64 shrink-0 h-full min-h-0">
         {/* Scores */}
-        <Card>
+        <Card className="shrink-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">{t('charades.scores')}</CardTitle>
           </CardHeader>
@@ -490,7 +490,7 @@ export function CharadesPage() {
         </Card>
 
         {/* Guesses */}
-        <Card className="flex flex-col h-[400px]">
+        <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Chat</CardTitle>
           </CardHeader>

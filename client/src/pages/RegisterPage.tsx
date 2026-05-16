@@ -1,19 +1,19 @@
 // Strona rejestracji. Walidacja po stronie klienta (długość pól, zgodność haseł)
 // jako pierwszy filtr, ale autorytatywna walidacja jest na serwerze (Zod schema
 // w routes/auth.ts) - pokażemy błąd jeśli serwer odrzuci.
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/context/AuthContext';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/AuthContext";
 
 const LABEL_STYLE = {
-  display: 'block',
-  fontFamily: 'var(--font-head)',
+  display: "block",
+  fontFamily: "var(--font-head)",
   fontSize: 12,
   fontWeight: 700,
-  letterSpacing: '.08em',
-  textTransform: 'uppercase' as const,
-  color: 'rgba(255,247,232,0.65)',
+  letterSpacing: ".08em",
+  textTransform: "uppercase" as const,
+  color: "rgba(255,247,232,0.65)",
   marginBottom: 6,
 };
 
@@ -21,26 +21,33 @@ export function RegisterPage() {
   const { t } = useTranslation();
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     if (password !== confirmPassword) {
-      setError(t('auth.passwordMismatch', 'Hasła nie są zgodne'));
+      setError(t("auth.passwordMismatch", "Hasła nie są zgodne"));
       return;
     }
     setIsLoading(true);
     try {
       await register(username, email, password);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('auth.registerError', 'Rejestracja nie powiodła się'));
+      navigate("/");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? (err as { response?: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setError(
+        message || t("auth.registerError", "Rejestracja nie powiodła się"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -48,37 +55,52 @@ export function RegisterPage() {
 
   return (
     <div className="pr-auth-shell">
-      <div style={{ width: '100%', maxWidth: 460 }} className="fade-up">
-        <div style={{ textAlign: 'center', marginBottom: -48 }}>
-          <Link to="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
-            <img src="/logo.png" alt="PlayRoom" style={{ height: 300, width: 'auto' }} />
+      <div style={{ width: "100%", maxWidth: 460 }} className="fade-up">
+        <div className="pr-auth-logo-wrap">
+          <Link
+            to="/"
+            style={{ display: "inline-block", textDecoration: "none" }}
+          >
+            <img src="/logo.png" alt="PlayRoom" className="pr-auth-logo" />
           </Link>
         </div>
 
         <div className="pr-auth-card">
-          <h1 className="pr-auth-title" style={{ textAlign: 'center' }}>{t('auth.register', 'Załóż konto')}</h1>
-          <p className="pr-auth-sub" style={{ textAlign: 'center' }}>
-            {t('auth.registerSubtitle', 'Za chwilę będziesz grać.')}
+          <h1 className="pr-auth-title" style={{ textAlign: "center" }}>
+            {t("auth.register", "Załóż konto")}
+          </h1>
+          <p className="pr-auth-sub" style={{ textAlign: "center" }}>
+            {t("auth.registerSubtitle", "Za chwilę będziesz grać.")}
           </p>
 
           {error && (
-            <div style={{
-              background: 'rgba(239,68,68,0.14)',
-              border: '1px solid rgba(239,68,68,0.36)',
-              borderRadius: 12, padding: '10px 14px', marginBottom: 18,
-              color: '#FCA5A5', fontSize: 13,
-            }}>
+            <div
+              style={{
+                background: "rgba(239,68,68,0.14)",
+                border: "1px solid rgba(239,68,68,0.36)",
+                borderRadius: 12,
+                padding: "10px 14px",
+                marginBottom: 18,
+                color: "#FCA5A5",
+                fontSize: 13,
+              }}
+            >
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
+          >
             <div>
-              <label style={LABEL_STYLE}>{t('auth.username', 'Nazwa użytkownika')}</label>
+              <label style={LABEL_STYLE}>
+                {t("auth.username", "Nazwa użytkownika")}
+              </label>
               <input
                 className="pr-input"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value)}
                 placeholder="np. kasia.m"
                 minLength={3}
                 maxLength={30}
@@ -87,35 +109,37 @@ export function RegisterPage() {
               />
             </div>
             <div>
-              <label style={LABEL_STYLE}>{t('auth.email', 'Email')}</label>
+              <label style={LABEL_STYLE}>{t("auth.email", "Email")}</label>
               <input
                 className="pr-input"
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="ty@example.pl"
                 required
               />
             </div>
             <div>
-              <label style={LABEL_STYLE}>{t('auth.password', 'Hasło')}</label>
+              <label style={LABEL_STYLE}>{t("auth.password", "Hasło")}</label>
               <input
                 className="pr-input"
                 type="password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
                 required
               />
             </div>
             <div>
-              <label style={LABEL_STYLE}>{t('auth.confirmPassword', 'Powtórz hasło')}</label>
+              <label style={LABEL_STYLE}>
+                {t("auth.confirmPassword", "Powtórz hasło")}
+              </label>
               <input
                 className="pr-input"
                 type="password"
                 value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
                 required
@@ -127,15 +151,29 @@ export function RegisterPage() {
               style={{ marginTop: 6 }}
               disabled={isLoading}
             >
-              {isLoading ? '…' : t('auth.register', 'Załóż konto')}
+              {isLoading ? "…" : t("auth.register", "Załóż konto")}
             </button>
           </form>
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: 22, fontSize: 14, color: 'rgba(255,247,232,0.62)' }}>
-          {t('auth.haveAccount', 'Masz już konto?')}{' '}
-          <Link to="/login" style={{ color: 'var(--pr-primary)', textDecoration: 'none', fontWeight: 700 }}>
-            {t('auth.login', 'Zaloguj się')}
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: 22,
+            fontSize: 14,
+            color: "rgba(255,247,232,0.62)",
+          }}
+        >
+          {t("auth.haveAccount", "Masz już konto?")}{" "}
+          <Link
+            to="/login"
+            style={{
+              color: "var(--pr-primary)",
+              textDecoration: "none",
+              fontWeight: 700,
+            }}
+          >
+            {t("auth.login", "Zaloguj się")}
           </Link>
         </p>
       </div>

@@ -100,7 +100,7 @@ export function LobbyPage() {
             {t('lobby.subtitle', 'Dołącz do pokoju lub stwórz własny')} · {rooms.length} {t('lobby.rooms', 'pokojów')}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="pr-page-head-actions" style={{ display: 'flex', gap: 10 }}>
           <button className="pr-btn pr-btn-secondary" onClick={() => setShowJoinCode(true)}>
             <LogIn size={15} /> {t('lobby.joinByCode', 'Dołącz po kodzie')}
           </button>
@@ -157,7 +157,7 @@ export function LobbyPage() {
                   </div>
                 </div>
 
-                <div style={{
+                <div className="pr-room-card-players" style={{
                   fontFamily: 'var(--font-head)', fontWeight: 700,
                   color: full ? 'var(--pr-text-muted)' : 'var(--pr-accent)',
                   fontSize: 14, display: 'flex', alignItems: 'center', gap: 6,

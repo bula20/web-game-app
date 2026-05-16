@@ -39,8 +39,8 @@ export function Navbar() {
       {/* Left: logo + nav links */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-          <img src="/logo.png" alt="PlayRoom" style={{ height: 70, width: 'auto', display: 'block' }} />
-          <span className="pr-logo" style={{ fontSize: 22, lineHeight: 1 }}>PlayRoom</span>
+          <img src="/logo.png" alt="PlayRoom" style={{ height: 52, width: 'auto', display: 'block' }} />
+          <span className="pr-logo pr-navbar-logo-text" style={{ fontSize: 22, lineHeight: 1 }}>PlayRoom</span>
         </Link>
 
         <nav style={{ display: 'flex', gap: 4 }}>
@@ -95,7 +95,7 @@ export function Navbar() {
               ) : (
                 <div className={`pr-avatar pr-avatar-md ${user.isGuest ? avatarClassFromId(user.id) : avatarClass(user.avatarPreset)}`}>{initials}</div>
               )}
-              <div style={{ textAlign: 'left' }}>
+              <div className="pr-navbar-username" style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pr-light)', fontFamily: 'var(--font-head)' }}>
                   {user.username}
                 </div>

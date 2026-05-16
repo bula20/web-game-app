@@ -318,9 +318,8 @@ textarea.pr-input { height: auto; padding: 12px 16px; resize: vertical; }
   grid-template-columns: var(--pr-sidebar-w) 1fr;
   overflow: hidden;
 }
-.pr-app-body.no-sidebar {
-  grid-template-columns: 1fr;
-}
+.pr-app-body.sidebar-collapsed { grid-template-columns: 40px 1fr; }
+.pr-app-body.no-sidebar        { grid-template-columns: 1fr; }
 .pr-main {
   overflow-y: auto;
   padding: 28px;
@@ -777,14 +776,25 @@ textarea.pr-input { height: auto; padding: 12px 16px; resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   padding: 32px 16px;
+  overflow-y: auto;
   background:
     radial-gradient(700px 500px at 30% 20%, rgba(255,106,0,0.12), transparent 60%),
     radial-gradient(700px 500px at 70% 80%, rgba(0,119,255,0.16), transparent 60%);
 }
 .pr-main:has(.pr-auth-shell) {
   padding: 0;
+  overflow-y: auto;
+}
+.pr-auth-logo {
+  display: block;
+  height: clamp(180px, 28vh, 300px);
+  width: auto;
+}
+.pr-auth-logo-wrap {
+  text-align: center;
+  margin-bottom: -24px;
 }
 .pr-auth-card {
   width: 100%;
@@ -983,17 +993,41 @@ textarea.pr-input { height: auto; padding: 12px 16px; resize: vertical; }
   .pr-steps-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 900px) {
-  .pr-app-body { grid-template-columns: 1fr; }
-  .pr-sidebar  { display: none; }
-  .pr-main     { padding: 18px; }
-  .pr-hero     { padding: 56px 20px 44px; }
-  .pr-section  { padding: 40px 0 8px; }
+  .pr-app-body,
+  .pr-app-body.sidebar-collapsed { grid-template-columns: 1fr; }
+  .pr-sidebar,
+  .pr-sidebar-strip { display: none; }
+  .pr-main    { padding: 18px; }
+  .pr-hero    { padding: 56px 20px 44px; }
+  .pr-section { padding: 40px 0 8px; }
+}
+@media (max-width: 768px) {
+  .pr-navbar-logo-text { display: none; }
+  .pr-navbar-username  { display: none; }
+  .pr-navbar { gap: 6px; }
 }
 @media (max-width: 640px) {
-  .pr-navbar   { padding: 0 14px; }
+  .pr-navbar  { padding: 0 12px; }
   .pr-games-grid, .pr-steps-grid { grid-template-columns: 1fr; }
-  .pr-cta-row  { flex-direction: column; align-items: stretch; width: 100%; }
+  .pr-cta-row { flex-direction: column; align-items: stretch; width: 100%; }
   .pr-cta-row .pr-btn { width: 100%; }
-  .pr-modal    { padding: 24px; }
+  .pr-modal   { padding: 24px; }
   .pr-page-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .pr-page-head-actions { flex-wrap: wrap; width: 100%; }
+  .pr-page-head-actions .pr-btn { flex: 1; min-width: 120px; }
+  .pr-room-card { grid-template-columns: 44px 1fr auto; gap: 10px; }
+  .pr-room-card-players { display: none; }
+  .pr-main { padding: 14px; }
+}
+@media (max-width: 480px) {
+  .pr-auth-card { padding: 24px 18px; }
+}
+
+/* ── Drawing tools (Charades) ──────────────────────────────────────────── */
+.pr-color-swatch { width: 30px; height: 30px; flex-shrink: 0; }
+.pr-width-swatch { width: 30px; height: 30px; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .pr-color-swatch { width: 22px; height: 22px; }
+  .pr-width-swatch { width: 22px; height: 22px; }
+  .pr-draw-tools   { gap: 6px; }
 }

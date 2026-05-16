@@ -23,18 +23,14 @@ export function Layout() {
     <div className="pr-app">
       <Navbar />
       <div
-        style={showSidebar ? {
-          display: 'grid',
-          gridTemplateColumns: sidebarOpen ? 'var(--pr-sidebar-w) 1fr' : '40px 1fr',
-          overflow: 'hidden',
-          height: 'calc(100vh - var(--pr-navbar-h))',
-        } : { height: 'calc(100vh - var(--pr-navbar-h))', overflow: 'hidden' }}
+        className={`pr-app-body${!showSidebar ? ' no-sidebar' : !sidebarOpen ? ' sidebar-collapsed' : ''}`}
+        style={{ height: 'calc(100vh - var(--pr-navbar-h))' }}
       >
         {showSidebar && (
           sidebarOpen
             ? <Sidebar onCollapse={toggle} />
             : (
-              <div style={{
+              <div className="pr-sidebar-strip" style={{
                 background: 'rgba(6,27,63,0.55)',
                 borderRight: '1px solid var(--pr-border-dark)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
