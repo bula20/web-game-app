@@ -37,9 +37,9 @@ export function Navbar() {
     <>
     <header className="pr-navbar">
       {/* Left: logo + nav links */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+      <div className="pr-navbar-left" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-          <img src="/logo.png" alt="PlayRoom" style={{ height: 52, width: 'auto', display: 'block' }} />
+          <img src="/logo.png" alt="PlayRoom" className="pr-navbar-logo-img" style={{ height: 52, width: 'auto', display: 'block' }} />
           <span className="pr-logo pr-navbar-logo-text" style={{ fontSize: 22, lineHeight: 1 }}>PlayRoom</span>
         </Link>
 
@@ -50,7 +50,7 @@ export function Navbar() {
               className={`pr-nav-link ${isActive('/history') ? 'active' : ''}`}
             >
               <History size={14} />
-              {t('nav.history', 'Historia')}
+              <span className="pr-nav-link-label">{t('nav.history', 'Historia')}</span>
             </Link>
           )}
           {user?.activeRoomCode && (
@@ -60,7 +60,7 @@ export function Navbar() {
               style={{ color: 'var(--pr-accent)' }}
             >
               <DoorOpen size={14} />
-              {t('nav.myRoom', 'Mój pokój')}
+              <span className="pr-nav-link-label">{t('nav.myRoom', 'Mój pokój')}</span>
             </Link>
           )}
         </nav>
@@ -70,7 +70,7 @@ export function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="pr-nav-link" onClick={toggleLanguage} title={t('nav.language', 'Język')}>
           <Globe size={15} />
-          <span style={{ fontFamily: 'var(--font-head)', fontSize: 12, fontWeight: 700, letterSpacing: '.06em' }}>
+          <span className="pr-navbar-lang-text" style={{ fontFamily: 'var(--font-head)', fontSize: 12, fontWeight: 700, letterSpacing: '.06em' }}>
             {i18n.language.toUpperCase()}
           </span>
         </button>

@@ -4,25 +4,27 @@
 //   'W' / 'B' = damka (king) - rusza się i bije w 4 strony, na dowolną odległość.
 // Reguły wymuszone: jeśli istnieje możliwe bicie, gracz MUSI bić. Po dotarciu
 // do końcowego rzędu pionek awansuje na damkę.
-export type Piece = null | 'w' | 'b' | 'W' | 'B';
+export type Piece = null | "w" | "b" | "W" | "B";
 export type Board = Piece[][];
 
 // Ustawienie startowe: 12 czarnych w 3 górnych rzędach, 12 białych w 3 dolnych.
 // Środkowe 2 rzędy puste.
 export function createInitialBoard(): Board {
-  const board: Board = Array(8).fill(null).map(() => Array(8).fill(null));
+  const board: Board = Array(8)
+    .fill(null)
+    .map(() => Array(8).fill(null));
 
   // Place black pieces (top)
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 8; col++) {
-      if ((row + col) % 2 === 1) board[row][col] = 'b';
+      if ((row + col) % 2 === 1) board[row][col] = "b";
     }
   }
 
   // Place white pieces (bottom)
   for (let row = 5; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
-      if ((row + col) % 2 === 1) board[row][col] = 'w';
+      if ((row + col) % 2 === 1) board[row][col] = "w";
     }
   }
 
@@ -33,7 +35,11 @@ export function createInitialBoard(): Board {
 // Reguła wymuszonego bicia ma 2 poziomy: jeśli ten konkretny pionek może bić,
 // zwracamy tylko bicia; jeśli inny pionek tego samego koloru może bić, ten pionek
 // nie może wcale się ruszyć (pusta lista).
-export function getValidMoves(board: Board, row: number, col: number): [number, number][] {
+export function getValidMoves(
+  board: Board,
+  row: number,
+  col: number,
+): [number, number][] {
   const piece = board[row][col];
   if (!piece) return [];
 
@@ -60,15 +66,36 @@ export function getValidMoves(board: Board, row: number, col: number): [number, 
   return moves;
 }
 
-function getCaptures(board: Board, row: number, col: number, color: string, isKing: boolean): [number, number][] {
+function getCaptures(
+  board: Board,
+  row: number,
+  col: number,
+  color: string,
+  isKing: boolean,
+): [number, number][] {
   const captures: [number, number][] = [];
   const directions = isKing
-    ? [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-    : color === 'w'
-      ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] // both directions for captures
-      : [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    ? [
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+        [1, 1],
+      ]
+    : color === "w"
+      ? [
+          [-1, -1],
+          [-1, 1],
+          [1, -1],
+          [1, 1],
+        ] // both directions for captures
+      : [
+          [-1, -1],
+          [-1, 1],
+          [1, -1],
+          [1, 1],
+        ];
 
-  const opponent = color === 'w' ? 'b' : 'w';
+  const opponent = color === "w" ? "b" : "w";
 
   for (const [dr, dc] of directions) {
     const midR = row + dr;
@@ -76,9 +103,11 @@ function getCaptures(board: Board, row: number, col: number, color: string, isKi
     const endR = row + 2 * dr;
     const endC = col + 2 * dc;
 
-    if (isInBounds(endR, endC) &&
-        board[midR][midC]?.toLowerCase() === opponent &&
-        board[endR][endC] === null) {
+    if (
+      isInBounds(endR, endC) &&
+      board[midR][midC]?.toLowerCase() === opponent &&
+      board[endR][endC] === null
+    ) {
       captures.push([endR, endC]);
     }
   }
@@ -99,13 +128,17 @@ function hasAnyCaptureForColor(board: Board, color: string): boolean {
   return false;
 }
 
-export function makeMove(board: Board, from: [number, number], to: [number, number]): {
+export function makeMove(
+  board: Board,
+  from: [number, number],
+  to: [number, number],
+): {
   board: Board;
   captured: boolean;
   kinged: boolean;
   canContinue: boolean;
 } {
-  const newBoard = board.map(row => [...row]);
+  const newBoard = board.map((row) => [...row]);
   const [fr, fc] = from;
   const [tr, tc] = to;
 
@@ -117,7 +150,6 @@ export function makeMove(board: Board, from: [number, number], to: [number, numb
   const dr = Math.sign(tr - fr);
   const dc = Math.sign(tc - fc);
 
-  // Check if this is a capture move
   if (Math.abs(tr - fr) === 2) {
     const midR = fr + dr;
     const midC = fc + dc;
@@ -131,7 +163,7 @@ export function makeMove(board: Board, from: [number, number], to: [number, numb
   // Check for kinging
   let kinged = false;
   if (!isKing) {
-    if ((color === 'w' && tr === 0) || (color === 'b' && tr === 7)) {
+    if ((color === "w" && tr === 0) || (color === "b" && tr === 7)) {
       newBoard[tr][tc] = piece.toUpperCase() as Piece;
       kinged = true;
     }
@@ -148,7 +180,12 @@ export function makeMove(board: Board, from: [number, number], to: [number, numb
   return { board: newBoard, captured, kinged, canContinue };
 }
 
-export function isValidMove(board: Board, from: [number, number], to: [number, number], turn: string): boolean {
+export function isValidMove(
+  board: Board,
+  from: [number, number],
+  to: [number, number],
+  turn: string,
+): boolean {
   const [fr, fc] = from;
   const piece = board[fr][fc];
   if (!piece || piece.toLowerCase() !== turn) return false;
@@ -180,8 +217,22 @@ export function countPieces(board: Board, color: string): number {
 }
 
 function getDirections(color: string, isKing: boolean): [number, number][] {
-  if (isKing) return [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-  return color === 'w' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
+  if (isKing)
+    return [
+      [-1, -1],
+      [-1, 1],
+      [1, -1],
+      [1, 1],
+    ];
+  return color === "w"
+    ? [
+        [-1, -1],
+        [-1, 1],
+      ]
+    : [
+        [1, -1],
+        [1, 1],
+      ];
 }
 
 function isInBounds(r: number, c: number): boolean {

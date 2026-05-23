@@ -52,16 +52,19 @@ export function CharadesPage() {
   const [drawWidth, setDrawWidth] = useState(4);
   const [currentCycle, setCurrentCycle] = useState(1);
   const [totalCycles, setTotalCycles] = useState<number | null>(null);
+  const [mobileView, setMobileView] = useState<'board' | 'scores'>('board');
 
   // Drawing state
   const isDrawingRef = useRef(false);
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
   const lastEmitRef = useRef(0);
   const lastEmittedIdxRef = useRef(0);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRefDesktop = useRef<HTMLDivElement>(null);
+  const chatEndRefMobile = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRefDesktop.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRefMobile.current?.scrollIntoView({ behavior: 'smooth' });
   }, [guesses]);
 
   const clearCanvas = () => {
@@ -277,8 +280,25 @@ export function CharadesPage() {
   };
 
   return (
-    <div className="flex h-full gap-4 overflow-hidden">
-      <div className="flex flex-col gap-3 flex-1 min-w-0 overflow-y-auto">
+    <div className="pr-game-root flex h-full gap-4 overflow-hidden">
+      <div className="pr-game-tabs">
+        <button
+          className={`pr-game-tab ${mobileView === 'board' ? 'is-active' : ''}`}
+          onClick={() => setMobileView('board')}
+        >
+          {t('charades.tabBoard', 'Plansza')}
+        </button>
+        <button
+          className={`pr-game-tab ${mobileView === 'scores' ? 'is-active' : ''}`}
+          onClick={() => setMobileView('scores')}
+        >
+          {t('charades.tabScores', 'Punktacja')}
+        </button>
+      </div>
+      <div
+        className="pr-game-board-col flex flex-col gap-3 flex-1 min-w-0 overflow-y-auto"
+        data-mobile-hidden={mobileView !== 'board'}
+      >
         <div className="w-full">
           <DisconnectBanner />
         </div>
@@ -325,9 +345,10 @@ export function CharadesPage() {
               </span>
             )}
             <span style={{
-              fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 26,
+              fontFamily: 'var(--font-head)', fontWeight: 800,
+              fontSize: 'clamp(20px, 4.5vw, 26px)',
               color: timeLeft <= 10 ? '#FCA5A5' : 'var(--pr-light)',
-              minWidth: 56, textAlign: 'right',
+              minWidth: 52, textAlign: 'right',
               transition: 'color .3s',
             }}>
               {timeLeft}s
@@ -346,13 +367,17 @@ export function CharadesPage() {
         </div>
 
         {/* Canvas */}
-        <div style={{ borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%', flex: '1 1 0', minHeight: 0 }}>
+        <div style={{
+          borderRadius: 14, overflow: 'hidden', background: '#fff',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%',
+          aspectRatio: '800 / 580', maxWidth: '100%',
+        }}>
           <canvas
             ref={canvasRef}
             width={800}
             height={580}
             className="w-full h-full cursor-crosshair"
-            style={{ display: 'block', objectFit: 'contain' }}
+            style={{ display: 'block', touchAction: 'none' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -390,6 +415,38 @@ export function CharadesPage() {
             </Button>
           </div>
         )}
+
+        {/* Mobile-only chat – hidden on desktop via CSS */}
+        <div className="pr-charades-mobile-chat">
+          <div className="pr-charades-mobile-messages">
+            {guesses.map((g, i) => (
+              <div key={i}>
+                <div className={`text-sm ${g.correct ? 'text-green-600 font-bold' : ''}`}>
+                  <span className="font-medium">{g.player}: </span>
+                  <span>{g.correct ? t('charades.correct', { player: g.player }) : g.text}</span>
+                </div>
+                {g.close && !g.correct && (
+                  <div className="text-sm text-orange-500 font-medium pl-2">{t('charades.close')}</div>
+                )}
+              </div>
+            ))}
+            <div ref={chatEndRefMobile} />
+          </div>
+          {!isDrawer && !gameOver && (
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={guessText}
+                onChange={e => setGuessText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleGuess()}
+                placeholder={t('charades.guess')}
+                className="flex-1"
+              />
+              <Button size="icon" onClick={handleGuess}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Round/Game over */}
         {roundOver && !gameOver && (
@@ -471,7 +528,10 @@ export function CharadesPage() {
       </div>
 
       {/* Sidebar: scores + guesses */}
-      <div className="flex flex-col gap-4 w-64 shrink-0 h-full min-h-0">
+      <div
+        className="pr-game-side-col flex flex-col gap-4 w-64 shrink-0 h-full min-h-0"
+        data-mobile-hidden={mobileView !== 'scores'}
+      >
         {/* Scores */}
         <Card className="shrink-0">
           <CardHeader className="pb-3">
@@ -489,8 +549,8 @@ export function CharadesPage() {
           </CardContent>
         </Card>
 
-        {/* Guesses */}
-        <Card className="flex flex-col flex-1 min-h-0">
+        {/* Guesses – desktop only (hidden on mobile via CSS) */}
+        <Card className="pr-charades-desktop-chat flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Chat</CardTitle>
           </CardHeader>
@@ -508,7 +568,7 @@ export function CharadesPage() {
                     )}
                   </div>
                 ))}
-                <div ref={chatEndRef} />
+                <div ref={chatEndRefDesktop} />
               </div>
             </ScrollArea>
             {!isDrawer && !gameOver && (

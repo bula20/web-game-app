@@ -93,8 +93,7 @@ export function RecentMatches({ limit = 5, onNavigate }: RecentMatchesProps) {
                 {date.toLocaleDateString()}
               </div>
             </div>
-            <div />
-            <span className={`pr-badge ${resultBadgeClass(result)}`}>
+            <span className={`pr-badge ${resultBadgeClass(result)}`} style={{ flexShrink: 0 }}>
               {t(`history.${result}`, result)}
             </span>
           </div>

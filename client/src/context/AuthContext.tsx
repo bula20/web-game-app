@@ -3,17 +3,28 @@
 // utrzymuje synchronizację pola activeRoomCode poprzez nasłuch na eventy z socketa.
 // Token w localStorage przeżywa odświeżenie strony - useEffect na starcie wywołuje
 // /auth/me, żeby zweryfikować token i odtworzyć obiekt usera.
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { User } from '@/types/user';
-import api from '@/lib/api';
-import { connectSocket, disconnectSocket, getSocket } from '@/lib/socket';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
+import type { User } from "@/types/user";
+import api from "@/lib/api";
+import { connectSocket, disconnectSocket, getSocket } from "@/lib/socket";
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+  ) => Promise<void>;
   loginAsGuest: () => Promise<void>;
   handleGoogleCallback: (token: string) => Promise<void>;
   logout: () => void;
@@ -25,20 +36,22 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token"),
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   // Wspólny helper dla login/register/guest - zapisuje token do storage,
   // ustawia state i nawiązuje połączenie socketowe (z tokenem w handshake).
   const setAuth = useCallback((newToken: string, newUser: User) => {
-    localStorage.setItem('token', newToken);
+    localStorage.setItem("token", newToken);
     setToken(newToken);
     setUser(newUser);
     connectSocket(newToken);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
     disconnectSocket();
@@ -59,8 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // a my czyścimy stan przez logout().
   useEffect(() => {
     if (token) {
-      api.get('/auth/me')
-        .then(res => {
+      api
+        .get("/auth/me")
+        .then((res) => {
           setUser(res.data);
           connectSocket(token);
         })
@@ -88,20 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const s = getSocket();
       if (!s) return false;
 
-      const onChanged = (data: { code: string; gameType: string; status: string } | null) => {
+      const onChanged = (
+        data: { code: string; gameType: string; status: string } | null,
+      ) => {
         if (cancelled) return;
-        setUser((prev) => (prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev));
+        setUser((prev) =>
+          prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev,
+        );
       };
-      const onActive = (data: { code: string; gameType: string; status: string } | null) => {
+      const onActive = (
+        data: { code: string; gameType: string; status: string } | null,
+      ) => {
         if (cancelled) return;
-        setUser((prev) => (prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev));
+        setUser((prev) =>
+          prev ? { ...prev, activeRoomCode: data?.code ?? null } : prev,
+        );
       };
 
-      s.on('user:active_room_changed', onChanged);
-      s.on('user:active_room', onActive);
+      s.on("user:active_room_changed", onChanged);
+      s.on("user:active_room", onActive);
       return () => {
-        s.off('user:active_room_changed', onChanged);
-        s.off('user:active_room', onActive);
+        s.off("user:active_room_changed", onChanged);
+        s.off("user:active_room", onActive);
       };
     };
 
@@ -113,33 +135,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       window.clearInterval(interval);
-      if (typeof detach === 'function') detach();
+      if (typeof detach === "function") detach();
     };
   }, [token]);
 
   const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
+    const res = await api.post("/auth/login", { email, password });
     setAuth(res.data.token, res.data.user);
   };
 
-  const register = async (username: string, email: string, password: string) => {
-    const res = await api.post('/auth/register', { username, email, password });
+  const register = async (
+    username: string,
+    email: string,
+    password: string,
+  ) => {
+    const res = await api.post("/auth/register", { username, email, password });
     setAuth(res.data.token, res.data.user);
   };
 
-  // Logowanie jako gość - serwer tworzy ulotny user-id z prefiksem "guest:" i zwraca JWT.
-  // Goście mogą grać i czatować w pokojach, ale nie mają znajomych ani historii.
   const loginAsGuest = async () => {
-    const res = await api.post('/auth/guest');
+    const res = await api.post("/auth/guest");
     setAuth(res.data.token, res.data.user);
   };
 
   // Po Google OAuth serwer zwraca user na stronę /auth/callback?token=...
   // Token przekazujemy ręcznie w nagłówku, bo interceptor jeszcze go nie ma w storage.
   const handleGoogleCallback = async (callbackToken: string) => {
-    localStorage.setItem('token', callbackToken);
+    localStorage.setItem("token", callbackToken);
     setToken(callbackToken);
-    const res = await api.get('/auth/me', {
+    const res = await api.get("/auth/me", {
       headers: { Authorization: `Bearer ${callbackToken}` },
     });
     setUser(res.data);
@@ -147,7 +171,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginAsGuest, handleGoogleCallback, logout, setActiveRoomCode, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isLoading,
+        login,
+        register,
+        loginAsGuest,
+        handleGoogleCallback,
+        logout,
+        setActiveRoomCode,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -155,6 +192,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }

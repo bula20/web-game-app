@@ -44,6 +44,7 @@ export function CheckersPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [moveHistory, setMoveHistory] = useState<{ move: string; color: 'w' | 'b' }[]>([]);
+  const [mobileView, setMobileView] = useState<'board' | 'chat'>('board');
 
   const playerColorRef = useRef(playerColor);
   useEffect(() => { playerColorRef.current = playerColor; }, [playerColor]);
@@ -270,8 +271,25 @@ export function CheckersPage() {
   };
 
   return (
-    <div className="flex h-full gap-4 overflow-hidden">
-      <div className="flex flex-col items-center gap-2 flex-1 min-w-0 overflow-hidden py-1">
+    <div className="pr-game-root flex h-full gap-4 overflow-hidden">
+      <div className="pr-game-tabs">
+        <button
+          className={`pr-game-tab ${mobileView === 'board' ? 'is-active' : ''}`}
+          onClick={() => setMobileView('board')}
+        >
+          {t('game.tabBoard', 'Plansza')}
+        </button>
+        <button
+          className={`pr-game-tab ${mobileView === 'chat' ? 'is-active' : ''}`}
+          onClick={() => setMobileView('chat')}
+        >
+          {t('game.tabChat', 'Czat')}
+        </button>
+      </div>
+      <div
+        className="pr-game-board-col flex flex-col items-center gap-2 flex-1 min-w-0 overflow-hidden py-1"
+        data-mobile-hidden={mobileView !== 'board'}
+      >
         <div className="w-full shrink-0">
           <DisconnectBanner />
         </div>
@@ -327,7 +345,12 @@ export function CheckersPage() {
                 </h2>
                 {reason && (
                   <p style={{ color: 'var(--pr-text-secondary)', fontSize: 15, margin: 0 }}>
-                    {t(`game.reason.${reason}`, reason)}
+                    {isDraw
+                      ? t(`game.reason.${reason}`, reason)
+                      : t(
+                          `game.reason.${reason}_${isWin ? 'win' : 'loss'}`,
+                          t(`game.reason.${reason}`, reason),
+                        )}
                   </p>
                 )}
                 <button className="pr-btn pr-btn-primary" style={{ marginTop: 8, width: '100%' }} onClick={() => navigate('/')}>
@@ -340,7 +363,10 @@ export function CheckersPage() {
       </div>
 
       {/* Sidebar: Move History + Chat */}
-      <div className="flex flex-col gap-4 w-80 shrink-0 h-full min-h-0">
+      <div
+        className="pr-game-side-col flex flex-col gap-4 w-80 shrink-0 h-full min-h-0"
+        data-mobile-hidden={mobileView !== 'chat'}
+      >
         {/* Move History */}
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-2 shrink-0">

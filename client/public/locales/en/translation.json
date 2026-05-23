@@ -12,7 +12,9 @@
     "logout": "Logout",
     "friends": "Friends",
     "language": "Language",
-    "myRoom": "My Room"
+    "myRoom": "My Room",
+    "play": "Play",
+    "player": "Player"
   },
   "auth": {
     "login": "Login",
@@ -21,6 +23,8 @@
     "password": "Password",
     "username": "Username",
     "confirmPassword": "Confirm Password",
+    "guest": "Guest",
+    "loginSubtitle": "Sign in and continue playing.",
     "loginWithGoogle": "Login with Google",
     "playAsGuest": "Play as Guest",
     "noAccount": "Don't have an account?",
@@ -115,8 +119,17 @@
     "reason": {
       "checkmate": "Checkmate",
       "resign": "Resignation",
+      "resignation": "Resignation",
+      "resignation_win": "Opponent resigned",
+      "resignation_loss": "You resigned",
       "timeout": "Timeout",
+      "timeout_win": "Opponent ran out of time",
+      "timeout_loss": "You ran out of time",
       "stalemate": "Stalemate",
+      "draw": "Draw",
+      "no_moves": "No available moves",
+      "no_moves_win": "Opponent has no available moves",
+      "no_moves_loss": "You have no available moves",
       "insufficient_material": "Insufficient material",
       "fifty_move": "50-move rule",
       "disconnect": "Disconnect",
@@ -134,7 +147,9 @@
     "guessing": "Guess what's being drawn...",
     "leaveGame": "Leave Game",
     "leaveConfirm": "Are you sure you want to leave the game?",
-    "round": "Round {{current}}/{{total}}"
+    "round": "Round {{current}}/{{total}}",
+    "tabBoard": "Board",
+    "tabScores": "Scores"
   },
   "friends": {
     "title": "Friends",

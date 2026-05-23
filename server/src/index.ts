@@ -13,7 +13,7 @@ async function main() {
   const httpServer = createServer(app);
   setupSocketServer(httpServer);
 
-  httpServer.listen(env.PORT, () => {
+  httpServer.listen(env.PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${env.PORT}`);
     console.log(`Environment: ${env.NODE_ENV}`);
   });

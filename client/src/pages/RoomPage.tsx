@@ -138,7 +138,7 @@ export function RoomPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.3fr .7fr', gap: 20, height: '100%' }}>
+    <div className="pr-room-grid">
       {/* Left: room info + players */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -210,7 +210,7 @@ export function RoomPage() {
           }}>
             {t('room.players', 'Gracze')} · {room.players.length}/{room.maxPlayers}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 10 }}>
             {room.players.map((player, i) => (
               <PlayerCard key={player.socketId} player={player} isHost={i === 0} hostLabel={t('room.host', 'Host')} />
             ))}
@@ -257,7 +257,7 @@ export function RoomPage() {
       </div>
 
       {/* Right: chat */}
-      <div className="pr-card" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, maxHeight: 'calc(100vh - 120px)' }}>
+      <div className="pr-card pr-room-chat" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
         <div className="pr-chat">
           <div className="pr-chat-header">Chat</div>
           <div className="pr-chat-body" style={{ flex: 1, overflowY: 'auto' }}>

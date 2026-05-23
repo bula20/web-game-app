@@ -12,7 +12,9 @@
     "logout": "Wyloguj",
     "friends": "Znajomi",
     "language": "Język",
-    "myRoom": "Mój pokój"
+    "myRoom": "Mój pokój",
+    "play": "Graj",
+    "player": "Gracz"
   },
   "auth": {
     "login": "Zaloguj się",
@@ -21,6 +23,8 @@
     "password": "Hasło",
     "username": "Nazwa użytkownika",
     "confirmPassword": "Potwierdź hasło",
+    "guest": "Gość",
+    "loginSubtitle": "Zaloguj się i kontynuuj grę.",
     "loginWithGoogle": "Zaloguj przez Google",
     "playAsGuest": "Graj jako gość",
     "noAccount": "Nie masz konta?",
@@ -115,8 +119,17 @@
     "reason": {
       "checkmate": "Szach-mat",
       "resign": "Poddanie się",
+      "resignation": "Poddanie się",
+      "resignation_win": "Przeciwnik poddał się",
+      "resignation_loss": "Poddałeś się",
       "timeout": "Przekroczenie czasu",
+      "timeout_win": "Przeciwnik stracił czas",
+      "timeout_loss": "Twój czas dobiegł końca",
       "stalemate": "Pat",
+      "draw": "Remis",
+      "no_moves": "Brak dostępnych ruchów",
+      "no_moves_win": "Przeciwnik nie ma dostępnych ruchów",
+      "no_moves_loss": "Nie masz dostępnych ruchów",
       "insufficient_material": "Niewystarczający materiał",
       "fifty_move": "Reguła 50 ruchów",
       "disconnect": "Rozłączenie",
@@ -134,7 +147,9 @@
     "guessing": "Zgadnij co jest rysowane...",
     "leaveGame": "Opuść grę",
     "leaveConfirm": "Czy na pewno chcesz opuścić rozgrywkę?",
-    "round": "Runda {{current}}/{{total}}"
+    "round": "Runda {{current}}/{{total}}",
+    "tabBoard": "Plansza",
+    "tabScores": "Punktacja"
   },
   "friends": {
     "title": "Znajomi",
