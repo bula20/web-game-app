@@ -1,11 +1,5 @@
-// Strona pokoju gry (poczekalnia). Pokazuje listę graczy, czat, przycisk "Start"
-// (tylko dla hosta, gdy wszyscy są w pokoju), banner "host away" z countdownem.
-//
-// Race-condition fix przy starcie gry: gdy host wciska "Start", serwer wysyła
-// chess:start / checkers:start / charades:start do wszystkich graczy. Tu
-// nasłuchujemy tych eventów i NAVIGUJEMY na stronę gry, przekazując dane przez
-// router state (drugi argument navigate) - dzięki temu strona gry dostaje
-// początkowy stan natychmiast, bez czekania na drugi event po mountcie.
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +39,7 @@ export function RoomPage() {
       setHostAwaySeconds(s => (s !== null && s > 0) ? s - 1 : null);
     }, 1000);
     return () => clearInterval(timer);
-  }, [hostAwaySeconds !== null]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hostAwaySeconds !== null]); 
 
   useEffect(() => {
     if (!socket || !code) return;
@@ -64,24 +58,24 @@ export function RoomPage() {
       setHostAwaySeconds(null);
       if (newHostSocketId === socket.id) toast.success('Jesteś teraz hostem pokoju!');
       else toast.info(`Nowy host: ${newHostName}`);
-      // Bezpośredni fetch zamiast lib/api - odświeża pełny stan pokoju po promocji
-      // hosta (event nie zawiera całego pokoju, tylko nowego hosta). Do rozważenia
-      // refaktor na funkcję getRoom() w lib/api.ts.
+      
+      
+      
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      }).then(r => r.json()).then(data => setRoom(data)).catch(() => { /* odśwież się przy następnym evencie */ });
+      }).then(r => r.json()).then(data => setRoom(data)).catch(() => {  });
     });
     socket.on('room:closed', () => { toast.error('Pokój został zamknięty'); navigate('/'); });
     socket.on('chat:room_message', (msg: ChatMessage) => setMessages(prev => [...prev, msg]));
-    // Race-condition fix: przekazujemy dane startowe przez router state, żeby
-    // strona gry mogła wyrenderować planszę bez czekania na chess:get_state.
+    
+    
     socket.on('chess:start', (data: any) => navigate(`/game/chess/${code}`, { state: data }));
     socket.on('checkers:start', (data: any) => navigate(`/game/checkers/${code}`, { state: data }));
     socket.on('charades:start', (data: any) => navigate(`/game/charades/${code}`, { state: data }));
-    // Charades pozwala dołączyć do trwającej gry - od razu nawigujemy na grę.
+    
     socket.on('room:joined_in_progress', () => navigate(`/game/charades/${code}`));
 
-    // Initial load - pełny stan pokoju (potrzebny np. po wejściu z /lobby przez navigate).
+    
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/rooms/${code}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     }).then(r => r.json()).then(data => setRoom(data)).catch(() => navigate('/'));
@@ -139,10 +133,10 @@ export function RoomPage() {
 
   return (
     <div className="pr-room-grid">
-      {/* Left: room info + players */}
+      
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Host-away banner */}
+        
         {hostAwaySeconds !== null && (
           <div className="pr-banner">
             <div>
@@ -161,7 +155,7 @@ export function RoomPage() {
 
         <DisconnectBanner />
 
-        {/* Room header card */}
+        
         <div className="pr-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
             <div className="pr-room-icon" style={{ width: 60, height: 60, fontSize: 28 }}>{gameIcon}</div>
@@ -193,7 +187,7 @@ export function RoomPage() {
             </button>
           </div>
 
-          {/* Settings row */}
+          
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
             <SettingBox icon={<Users size={13} />} label={t('lobby.players', { current: '', max: '' }).split('  ')[0] || 'Gracze'} value={`${room.players.length} / ${room.maxPlayers}`} />
             <SettingBox icon={<Clock size={13} />} label={t('lobby.timerMinutes', 'Czas')} value={room.timerMinutes ? `${room.timerMinutes} min` : '—'} />
@@ -201,7 +195,7 @@ export function RoomPage() {
           </div>
         </div>
 
-        {/* Players grid */}
+        
         <div>
           <div style={{
             fontFamily: 'var(--font-head)', fontSize: 11, fontWeight: 600,
@@ -226,7 +220,7 @@ export function RoomPage() {
           </div>
         </div>
 
-        {/* Action buttons */}
+        
         <div style={{ display: 'flex', gap: 10 }}>
           {isHost && (
             <button
@@ -256,7 +250,7 @@ export function RoomPage() {
         </div>
       </div>
 
-      {/* Right: chat */}
+      
       <div className="pr-card pr-room-chat" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
         <div className="pr-chat">
           <div className="pr-chat-header">Chat</div>

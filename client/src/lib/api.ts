@@ -1,7 +1,5 @@
-// Klient HTTP (axios) do wywoływania REST API serwera. Dwa interceptory:
-//   - request: dokleja nagłówek Authorization z tokenem JWT z localStorage,
-//   - response: na 401 (token wygasł lub nieprawidłowy) czyści token
-//     i wymusza powrót na /login.
+
+
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

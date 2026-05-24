@@ -1,5 +1,5 @@
-// Komponent Badge (shadcn/ui). Mała plakietka tekstowa z wariantami kolorystycznymi
-// (default/secondary/destructive/outline) - używana do statusów pokoju, online itp.
+
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"

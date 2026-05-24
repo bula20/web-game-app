@@ -1,5 +1,5 @@
-// Router uwierzytelniania - rejestracja, logowanie, gość, GET /me oraz Google OAuth.
-// Endpointy publiczne oprócz GET /me, ktore wymaga waznego JWT.
+
+
 
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
@@ -75,19 +75,19 @@ router.post("/register", async (req: Request, res: Response) => {
   }
 });
 
-// POST /login [public] - logowanie e-mail/haslo, zwraca JWT i podstawowe dane uzytkownika.
+
 router.post("/login", async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
     const user = await User.findOne({ email: data.email });
 
-    // Brak passwordHash oznacza konto OAuth (np. Google) - logowanie haslem niedozwolone.
+    
     if (!user || !user.passwordHash) {
       res.status(401).json({ error: "Invalid email or password" });
       return;
     }
 
-    // bcrypt.compare odporne na timing attack - weryfikuje haslo wzgledem zapisanego hasha.
+    
     const isMatch = await bcrypt.compare(data.password, user.passwordHash);
     if (!isMatch) {
       res.status(401).json({ error: "Invalid email or password" });
@@ -120,8 +120,7 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-// POST /guest [public] - tworzy tymczasowe konto goscia bez zapisu w bazie danych.
-// Identyfikator i nazwa generowane na podstawie timestampu, JWT oznaczony flaga isGuest.
+
 router.post("/guest", (req: Request, res: Response) => {
   const guestName = `Guest_${Date.now().toString(36)}`;
   const guestId = `guest_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -132,10 +131,10 @@ router.post("/guest", (req: Request, res: Response) => {
   });
 });
 
-// GET /me [auth] - zwraca dane aktualnie zalogowanego uzytkownika lub goscia.
+
 router.get("/me", authMiddleware, (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
-  // Goscie nie maja rekordu w bazie - dane czytamy z payloadu JWT i pamieci sesji guestActiveRooms.
+  
   if (authReq.isGuest) {
     const activeRoomCode = authReq.userId
       ? (guestActiveRooms.get(authReq.userId)?.code ?? null)
@@ -161,7 +160,7 @@ router.get("/me", authMiddleware, (req: Request, res: Response) => {
   }
 });
 
-// GET /google [public] - inicjuje proces logowania przez Google OAuth (przekierowanie do Google).
+
 router.get(
   "/google",
   passport.authenticate("google", {
@@ -170,8 +169,7 @@ router.get(
   }),
 );
 
-// GET /google/callback [public] - callback Google'a; po sukcesie generuje JWT i wraca do klienta.
-// Token przekazywany w query stringu - klient na stronie /auth/callback zapisze go i zaloguje uzytkownika.
+
 router.get(
   "/google/callback",
   passport.authenticate("google", {

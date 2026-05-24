@@ -1,11 +1,5 @@
-// ProfilePanel - rozsuwany od prawej panel z trzema zakładkami:
-//   1. Profil: avatar picker (kolory + obrazki), zmiana username (raz na 7 dni),
-//      zmiana hasła (z weryfikacją obecnego), ostatnie partie z RecentMatches.
-//   2. Znajomi: lista znajomych z DM, lista pending'ów (accept/reject), search,
-//      dodawanie po username.
-//   3. Historia: pełna historia partii z paginacją.
-// Wszystkie operacje na koncie idą REST'em (axios), eventy live (np. nowy znajomy)
-// dochodzą przez socket - po nich refetchujemy listę.
+
+
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -17,10 +11,10 @@ import { RecentMatches } from '@/components/dashboard/RecentMatches';
 import type { Friend, FriendRequest } from '@/types/user';
 import type { GameHistory, GameHistoryResponse } from '@/types/game';
 
-// ─── Avatar presets ──────────────────────────────────────────────────────────
+
 
 const COLOR_PRESETS = ['color:1', 'color:2', 'color:3', 'color:4', 'color:5', 'color:6', 'color:7', 'color:8'];
-// Dodaj pliki PNG/JPG do client/public/avatars/ i wpisz ich nazwy tutaj w formacie 'img:nazwa.png'
+
 const IMAGE_PRESETS: string[] = [
   'img:avatar_1.png', 'img:avatar_2.png', 'img:avatar_3.png', 'img:avatar_4.png',
   'img:avatar_5.png', 'img:avatar_6.png', 'img:avatar_7.png', 'img:avatar_8.png',
@@ -29,7 +23,7 @@ const IMAGE_PRESETS: string[] = [
   'img:avatar_17.png', 'img:avatar_18.png', 'img:avatar_19.png', 'img:avatar_20.png',
 ];
 
-// ─── Small components ────────────────────────────────────────────────────────
+
 
 function AvatarDisplay({ preset, size, initials, guestId }: { preset?: string; size: number; initials: string; guestId?: string }) {
   const src = avatarImgSrc(preset);
@@ -49,7 +43,7 @@ function AvatarDisplay({ preset, size, initials, guestId }: { preset?: string; s
   );
 }
 
-// ─── Main Panel ──────────────────────────────────────────────────────────────
+
 
 interface ProfilePanelProps {
   open: boolean;
@@ -64,7 +58,7 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('profil');
 
-  // close on Escape
+  
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -83,7 +77,7 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
     <>
       <div className="pr-profile-backdrop" onClick={onClose} />
       <aside className="pr-profile-panel">
-        {/* Header */}
+        
         <div className="pr-profile-header">
           <AvatarDisplay preset={user.avatarPreset} size={52} initials={initials} guestId={user.isGuest ? user.id : undefined} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -109,7 +103,7 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
           </button>
         </div>
 
-        {/* Tabs */}
+        
         <div className="pr-tabs" style={{ flexShrink: 0, padding: '0 24px' }}>
           {(['profil', 'znajomi', 'historia'] as Tab[]).map(t_ => (
             <button
@@ -122,7 +116,7 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
           ))}
         </div>
 
-        {/* Body */}
+        
         <div className="pr-profile-body">
           {tab === 'profil' && (
             <ProfilTab
@@ -152,7 +146,7 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
   );
 }
 
-// ─── Profil Tab ───────────────────────────────────────────────────────────────
+
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -208,7 +202,7 @@ function ProfilTab({
   const remaining = useCountdown(user.lastUsernameChange);
   const canChangeUsername = remaining === 0;
 
-  // Fetch stats
+  
   useEffect(() => {
     if (user.isGuest) return;
     api.get<GameHistoryResponse>('/games/history?page=1&limit=100')
@@ -322,7 +316,7 @@ function ProfilTab({
 
   return (
     <>
-      {/* Avatar picker */}
+      
       <div className="pr-profile-section">
         <div className="pr-profile-section-label">{t('profile.chooseAvatar')}</div>
         <div className="pr-avatar-picker">
@@ -376,7 +370,7 @@ function ProfilTab({
         </div>
       </div>
 
-      {/* Stats */}
+      
       {!user.isGuest && stats && (() => {
         const TABS: { key: 'all' | 'chess' | 'checkers' | 'charades'; icon: string; label: string }[] = [
           { key: 'all',      icon: '🎮', label: t('profile.stats.all') },
@@ -389,7 +383,7 @@ function ProfilTab({
         return (
           <div className="pr-profile-section">
             <div className="pr-profile-section-label">{t('profile.stats.title')}</div>
-            {/* Tab pills */}
+            
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
               {visibleTabs.map(tab => (
                 <button
@@ -409,7 +403,7 @@ function ProfilTab({
                 </button>
               ))}
             </div>
-            {/* 4-box grid */}
+            
             <div className="pr-stat-grid">
               <div className="pr-stat-box">
                 <div className="pr-stat-num">{activeData.total}</div>
@@ -432,7 +426,7 @@ function ProfilTab({
         );
       })()}
 
-      {/* Username change */}
+      
       {!user.isGuest && (
         <div className="pr-profile-section">
           <div className="pr-profile-section-label">{t('profile.changeUsername')}</div>
@@ -472,7 +466,7 @@ function ProfilTab({
         </div>
       )}
 
-      {/* Password change */}
+      
       {!user.isGuest && (
         <div className="pr-profile-section">
           <div className="pr-profile-section-label">{t('profile.changePassword')}</div>
@@ -530,7 +524,7 @@ function ProfilTab({
   );
 }
 
-// ─── Znajomi Tab ──────────────────────────────────────────────────────────────
+
 
 function ZnajomiTab() {
   const { t } = useTranslation();
@@ -589,7 +583,7 @@ function ZnajomiTab() {
 
   return (
     <>
-      {/* Add friend */}
+      
       <div className="pr-profile-section">
         <div style={{ fontSize: 11, color: 'var(--pr-text-muted)'}} className="pr-profile-section-label">{t('profile.addFriend')}</div>
         <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8 }}>
@@ -612,7 +606,7 @@ function ZnajomiTab() {
         )}
       </div>
 
-      {/* Pending requests */}
+      
       {requests.length > 0 && (
         <div className="pr-profile-section">
           <div className="pr-profile-section-label">{t('profile.requestsCount', { count: requests.length })}</div>
@@ -641,7 +635,7 @@ function ZnajomiTab() {
         </div>
       )}
 
-      {/* Friends list */}
+      
       <div className="pr-profile-section">
         <div className="pr-profile-section-label">
           <div style={{ fontSize: 12, color: 'var(--pr-text-muted)' }}>

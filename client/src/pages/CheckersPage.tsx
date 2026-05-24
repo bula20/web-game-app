@@ -1,9 +1,5 @@
-// Strona rozgrywki w warcaby. Logika analogiczna do ChessPage: dwustopniowy ruch
-// (get_moves -> move), plansza obracana zależnie od koloru, race-condition fix
-// przez router state. Specyfika warcabów: bicia są wymuszone, multi-capture
-// (po biciu możesz dalej bić tym samym pionkiem), promocja na damkę przy
-// dotarciu do końca planszy. Detale logiki rozstrzyga serwer (checkersHandler),
-// klient tylko wysyła czytelne zdarzenia i renderuje stan.
+
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +14,7 @@ import { Send, Flag } from 'lucide-react';
 import { DisconnectBanner } from '@/components/DisconnectBanner';
 import type { ChatMessage } from '@/types/game';
 
-type Piece = null | 'w' | 'b' | 'W' | 'B'; // lowercase=regular, uppercase=king
+type Piece = null | 'w' | 'b' | 'W' | 'B'; 
 type Board = Piece[][];
 
 const BOARD_SIZE = 8;
@@ -126,12 +122,12 @@ export function CheckersPage() {
       setMessages(prev => [...prev, msg]);
     });
 
-    // Use router state if available (passed from RoomPage) for instant init
+    
     if (location.state?.board && location.state?.playerColor) {
       initFromData(location.state as Parameters<typeof initFromData>[0]);
     }
 
-    // Request current game state (handles race condition where checkers:start was missed)
+    
     socket.emit('checkers:get_state', { code });
 
     return () => {
@@ -362,12 +358,12 @@ export function CheckersPage() {
         })()}
       </div>
 
-      {/* Sidebar: Move History + Chat */}
+      
       <div
         className="pr-game-side-col flex flex-col gap-4 w-80 shrink-0 h-full min-h-0"
         data-mobile-hidden={mobileView !== 'chat'}
       >
-        {/* Move History */}
+        
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base">{t('game.moveHistory', 'Move History')}</CardTitle>
@@ -392,7 +388,7 @@ export function CheckersPage() {
           </CardContent>
         </Card>
 
-        {/* Chat */}
+        
         <Card className="flex flex-col h-72 shrink-0">
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base">Chat</CardTitle>

@@ -1,7 +1,5 @@
-// Handler eventów Socket.io dla kalamburów. Najbardziej złożona z trzech gier:
-// rundy z rotującym drawerem, broadcast kresek na canvas live, system zgadywania
-// z tolerancją na literówki (Levenshtein). Słowa pobierane z words.json (PL+EN
-// pogrupowane po kategoriach). Stan wszystkich aktywnych pokojów w activeGames.
+
+
 import { Server } from "socket.io";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -15,9 +13,7 @@ import {
 } from "./presenceHandler.js";
 import { guestActiveRooms } from "./guestState.js";
 
-// Wczytujemy bank słów raz, przy starcie modułu. Struktura JSON-a:
-// { en: { kategoria1: [...], kategoria2: [...] }, pl: {...} }.
-// Awaria odczytu nie wywala serwera - kalambury po prostu nie wystartują.
+
 let wordBank: Record<string, Record<string, string[]>> = { en: {}, pl: {} };
 try {
   const data = readFileSync(
@@ -40,13 +36,13 @@ interface CharadesPlayer {
 
 interface CharadesGameState {
   players: CharadesPlayer[];
-  // Indeks aktualnego rysującego w players[].
+  
   currentDrawerIndex: number;
-  // Indeks następnego drawera (zwykle currentDrawerIndex+1, ale może się przesuwać
-  // po removePlayer, żeby utrzymać sprawiedliwą rotację).
+  
+  
   nextDrawerSlot: number;
   currentWord: string;
-  // totalCycles = round * players, currentCycle rośnie po każdej rundzie.
+  
   totalCycles: number;
   currentCycle: number;
   drawingTime: number;
@@ -54,19 +50,17 @@ interface CharadesGameState {
   timerInterval: ReturnType<typeof setInterval> | null;
   startedAt: number;
   lang: string;
-  // Słowa już wybrane w tej grze - unikamy powtórzeń, dopóki bank ma świeże.
+  
   usedWords: Set<string>;
   roomId: unknown;
   roundInProgress: boolean;
-  // Pauza zegara podczas gdy drawer się rozłączył (czeka na powrót do GAME_DISCONNECT_GRACE).
+  
   paused: boolean;
 }
 
 const activeGames = new Map<string, CharadesGameState>();
 
-// Klasyczna odległość edycyjna (algorytm Wagnera-Fischera, programowanie dynamiczne O(m*n)).
-// Mówi ile pojedynczych operacji (insercja/delecja/substytucja) trzeba, żeby
-// zamienić ciąg a na b. Używana do wykrywania zgadywań "blisko".
+
 function levenshtein(a: string, b: string): number {
   const m = a.length,
     n = b.length;
@@ -86,10 +80,7 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-// Czy zgadywanie jest "blisko" hasła, ale nie identyczne? Tolerujemy 2 znaki
-// różnicy ALBO 30% długości słowa (dłuższe słowa - większa tolerancja literówek).
-// Dokładne trafienie zwraca false, bo wtedy traktujemy to jako pełną odpowiedź,
-// nie sygnał "ciepło".
+
 function isClose(guess: string, word: string): boolean {
   const g = guess.trim().toLowerCase();
   const w = word.toLowerCase();
@@ -98,8 +89,7 @@ function isClose(guess: string, word: string): boolean {
   return dist <= 2 || dist <= Math.floor(w.length * 0.3);
 }
 
-// Losuje słowo z banku w danym języku, pomijając te już wybrane w tej grze.
-// Gdy wyczerpiemy pulę - resetujemy usedWords i zaczynamy od nowa.
+
 function getRandomWord(lang: string, usedWords: Set<string>): string {
   const langWords = wordBank[lang] || wordBank["en"];
   const allWords = Object.values(langWords).flat();
@@ -123,9 +113,7 @@ function findPlayer(
   return state.players.findIndex((p) => p.socketId === socket.id);
 }
 
-// Zegar rundy - tyka co sekundę, ale zatrzymuje się gdy drawer rozłączony.
-// Po dojściu do 0 wymusza koniec rundy (endRound) niezależnie od tego, czy
-// ktoś zgadł.
+
 function startTimer(io: Server, code: string) {
   const state = activeGames.get(code);
   if (!state) return;
@@ -142,13 +130,7 @@ function startTimer(io: Server, code: string) {
   }, 1000);
 }
 
-// Callbacki presence dla kalamburów. Asymetryczne traktowanie:
-//   - DRAWER (rysujący) który nie wrócił po grace period - pomijamy rundę
-//     (drawer zostaje w grze, dostanie kolejną szansę w następnej rundzie),
-//   - GUESSER (zgadujący) który nie wrócił - usuwamy z gry, bo jego nieobecność
-//     nie zatrzymuje rundy.
-// Drawer-disconnect natychmiastowy: zerujemy paused (żeby zegar mógł wybrać
-// timeout naturalnie), drugiej szansy mu już nie damy w tej rundzie.
+
 registerGameDisconnectHandler("charades", (io, code, userId) => {
   const state = activeGames.get(code);
   if (!state) return;
@@ -196,7 +178,7 @@ registerGameReconnectHandler("charades", (io, socket, code) => {
     cycle: state.currentCycle,
     totalCycles: state.totalCycles,
   });
-  // Re-send the word if reconnecting user is the drawer
+  
   if (idx === state.currentDrawerIndex && state.currentWord) {
     socket.emit("charades:word", { word: state.currentWord, category: "" });
   }
@@ -255,7 +237,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
   socket.on("charades:get_state", ({ code }: { code: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
-    // Update socketId on state request (also acts as reconnect fallback)
+    
     const idx = findPlayer(state, socket);
     if (idx !== -1) state.players[idx].socketId = socket.id;
 
@@ -349,7 +331,7 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
     const wasDrawer = idx === state.currentDrawerIndex;
     removePlayer(io, code, idx);
 
-    // Explicit leave clears activeRoomCode
+    
     if (uid) {
       if (isGuestId) guestActiveRooms.delete(uid);
       else
@@ -368,16 +350,16 @@ export function setupCharadesHandler(io: Server, socket: AuthenticatedSocket) {
 
     socket.leave(`room:${code}`);
 
-    // If drawer left during a round and game still running, skip round
+    
     const stillRunning = activeGames.get(code);
     if (stillRunning && wasDrawer && stillRunning.roundInProgress) {
       endRound(io, code);
     }
   });
 
-  // NOTE: socket.on('disconnect') is handled by presenceHandler.
-  // On disconnect, if user is the drawer we pause the round immediately (before the grace expires)
-  // so the timer doesn't bleed out. The final outcome (skip/remove) is applied only after grace.
+  
+  
+  
   socket.on("disconnect", () => {
     for (const [code, state] of activeGames) {
       const idx = state.players.findIndex((p) => p.socketId === socket.id);
@@ -399,7 +381,7 @@ function removePlayer(io: Server, code: string, playerIndex: number) {
   const removed = state.players[playerIndex];
   state.players.splice(playerIndex, 1);
 
-  // Adjust currentDrawerIndex
+  
   if (playerIndex < state.currentDrawerIndex) {
     state.currentDrawerIndex--;
   } else if (playerIndex === state.currentDrawerIndex) {
@@ -571,11 +553,11 @@ async function endCharadesGame(io: Server, code: string) {
       .filter((id) => id.startsWith("guest_"))
       .forEach((gid) => guestActiveRooms.delete(gid));
   } catch {
-    /* ignore */
+    
   }
 }
 
-// Called by lobbyHandler when a player joins a charades game already in progress
+
 export function addPlayerToCharadesGame(
   io: Server,
   socket: AuthenticatedSocket,
@@ -585,7 +567,7 @@ export function addPlayerToCharadesGame(
   if (!state) return;
 
   const uid = socket.userId;
-  // If this user is already in state, it's a reconnect — just refresh socketId.
+  
   const existingIdx = uid
     ? state.players.findIndex((p) => p.userId === uid)
     : state.players.findIndex((p) => p.socketId === socket.id);

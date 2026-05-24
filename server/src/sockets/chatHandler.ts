@@ -1,16 +1,12 @@
-// Handler czatu - obsługuje dwa rodzaje wiadomości:
-//   - chat:room_message - czat w pokoju (każdy w pokoju widzi),
-//   - chat:direct_message - DM między dwoma zalogowanymi userami (goście DM nie mogą).
-// Wiadomości DM zapisujemy do bazy (kolekcja Message), żeby historia DM przeżyła
-// odświeżenie. Wiadomości pokojowe - tylko ulotnie do historii MongoDB
-// (nie są ładowane przy odświeżeniu pokoju).
+
+
 import { Server } from "socket.io";
 import { AuthenticatedSocket } from "../middleware/socketAuth.js";
 import { Message } from "../models/Message.js";
 import { onlineUsers } from "./index.js";
 
 export function setupChatHandler(io: Server, socket: AuthenticatedSocket) {
-  // Wiadomość w czacie pokoju. Limit 1000 znaków, pusta wiadomość ignorowana.
+  
   socket.on(
     "chat:room_message",
     async ({ code, text }: { code: string; text: string }) => {
@@ -38,9 +34,9 @@ export function setupChatHandler(io: Server, socket: AuthenticatedSocket) {
     },
   );
 
-  // DM do innego zalogowanego usera. Goście nie mogą wysyłać DM (brak listy znajomych).
-  // Jeśli adresat jest aktualnie online (figuruje w onlineUsers Map), wiadomość trafia
-  // do niego natychmiast; w każdym razie zapisujemy do bazy do historii.
+  
+  
+  
   socket.on(
     "chat:direct_message",
     async ({ toUserId, text }: { toUserId: string; text: string }) => {
@@ -71,9 +67,9 @@ export function setupChatHandler(io: Server, socket: AuthenticatedSocket) {
     },
   );
 
-  // Historia konwersacji DM między mną a withUserId. Zwracamy 50 najnowszych
-  // (od końca w stronę początku, potem reverse - chronologicznie rosnąco).
-  // Używamy callbacka, bo socket.io socket.on z drugim argumentem to ack pattern.
+  
+  
+  
   socket.on(
     "chat:get_history",
     async (

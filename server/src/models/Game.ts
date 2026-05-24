@@ -1,7 +1,5 @@
-// Model historii rozegranych partii. Każda partia (chess/checkers/charades) trafia
-// tu po endGame z uczestnikami, wynikiem i listą ruchów lub punktów. Jeden z graczy
-// może być gościem (userId=null), wtedy nie liczymy go do statystyk usera, ale
-// zachowujemy jego displayName w dokumencie.
+
+
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IGamePlayer {

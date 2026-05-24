@@ -1,6 +1,5 @@
-// Wiadomości - zarówno DM (type=direct, from+to) jak i czat pokojowy (type=room, roomId).
-// Zapisujemy tylko od zalogowanych userów (goście nie mają referencji User).
-// Limit 1000 znaków na wiadomość w schemacie + dodatkowy clamp w handlerze.
+
+
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IMessage extends Document {

@@ -1,7 +1,5 @@
-// Handler obsługujący lobby i pokoje gier - tworzenie, dołączanie, opuszczanie pokojów.
-// Zarządza również sukcesją hosta (promoteNextHost) gdy obecny host opuszcza pokój.
-// Obsługiwane eventy: lobby:join, lobby:leave, user:get_active_room,
-// room:create, room:join, room:leave. Disconnect jest celowo obsługiwany w presenceHandler.
+
+
 
 import { Server } from "socket.io";
 import { nanoid } from "nanoid";
@@ -15,10 +13,7 @@ import {
   cancelLobbyDisconnectTimeout,
 } from "./presenceHandler.js";
 
-// promoteNextHost - promuje następnego dostępnego (nie odłączonego, nie gościa)
-// gracza z players[] na hosta pokoju. Goście NIE mogą zostać hostem,
-// ponieważ nie mają persystentnego userId (User w bazie) - room.host wymaga ObjectId.
-// Wywoływana z lobbyHandler (po room:leave przez hosta) i z presenceHandler (po HOST_AWAY_TTL).
+
 async function promoteNextHost(io: Server, code: string) {
   try {
     const room = await Room.findOne({ code });
@@ -50,9 +45,7 @@ async function promoteNextHost(io: Server, code: string) {
 
 import { guestActiveRooms } from "./guestState.js";
 
-// Zapisuje "aktywny pokój" usera. Dla zalogowanych - w polu User.activeRoomCode
-// (persystencja). Dla gości - w in-memory mapie guestActiveRooms (gość znika
-// razem z restartem serwera). code=null oznacza wyjście z pokoju.
+
 async function setActiveRoom(
   userId: string | undefined,
   code: string | null,
@@ -68,12 +61,12 @@ async function setActiveRoom(
   try {
     await User.findByIdAndUpdate(userId, { activeRoomCode: code });
   } catch {
-    /* ignorujemy: drobny zapis w bazie, nie blokujmy reszty */
+    
   }
 }
 
 export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
-  // Join lobby for a game type (subscribe to room list updates)
+  
   socket.on("lobby:join", async ({ gameType }: { gameType: GameType }) => {
     socket.join(`lobby:${gameType}`);
     const rooms = await Room.find({
@@ -134,7 +127,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // Create a new room
+  
   socket.on(
     "room:create",
     async (data: {
@@ -197,12 +190,12 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     },
   );
 
-  // Wejście do istniejącego pokoju. Funkcja obsługuje TRZY ścieżki, w kolejności:
-  //   1) Powrót oryginalnego hosta z host_away - przywrócenie waiting + anulowanie timeoutu.
-  //   2) Reconnect istniejącego gracza (już figuruje na liście) - tylko aktualizujemy socketId.
-  //   3) Nowy gracz - dodajemy do players[] jeśli jest miejsce.
-  // Charades pozwala dołączać w trakcie gry (status=in_progress) - wtedy nowy gracz
-  // wchodzi do trwającej rundy z dokładką slotu (addPlayerToCharadesGame).
+  
+  
+  
+  
+  
+  
   socket.on("room:join", async ({ code }: { code: string }) => {
     try {
       const room = await Room.findOne({
@@ -220,8 +213,8 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         return;
       }
 
-      // Ścieżka 1: powrót hosta. Gość nie może być oryginalnym hostem (room.host=null
-      // dla gości), więc warunek odsiewa też goście.
+      
+      
       if (room.status === "host_away" && !socket.isGuest && socket.userId) {
         const isOriginalHost = room.host?.toString() === socket.userId;
         if (isOriginalHost) {
@@ -264,9 +257,9 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         }
       }
 
-      // Ścieżka 2: reconnect istniejącego gracza. Gracz już figuruje w players[],
-      // więc nie dodajemy go ponownie - tylko podmieniamy socketId i anulujemy
-      // ewentualne timeouty rozłączenia.
+      
+      
+      
       const existingPlayer = socket.userId
         ? socket.isGuest
           ? room.players.find((p) => p.guestId === socket.userId)
@@ -290,7 +283,7 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
         return;
       }
 
-      // Ścieżka 3: nowy gracz - musi być wolne miejsce (limit maxPlayers).
+      
       if (room.players.length >= room.maxPlayers) {
         socket.emit("room:error", { message: "Room is full" });
         return;
@@ -329,9 +322,9 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // Świadome opuszczenie pokoju (klik "Leave Room"), w odróżnieniu od rozłączenia
-  // sieciowego. Nie ma grace period - od razu czyścimy gracza, ewentualnie
-  // promujemy nowego hosta lub kasujemy pusty pokój.
+  
+  
+  
   socket.on("room:leave", async ({ code }: { code: string }) => {
     try {
       const room = await Room.findOne({ code });
@@ -387,5 +380,5 @@ export function setupLobbyHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // NOTE: disconnect handling moved to presenceHandler.ts — do not register here.
+  
 }

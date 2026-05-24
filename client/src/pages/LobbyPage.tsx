@@ -1,9 +1,5 @@
-// Lobby konkretnej gry (chess/checkers/charades). Pokazuje listę dostępnych
-// publicznych pokojów, pozwala stworzyć nowy lub dołączyć po kodzie. Listę
-// pokojów subskrybujemy przez socket (lobby:join), serwer wysyła aktualizacje
-// (lobby:room_created/updated/removed) - dzięki temu UI reaguje live na zmiany.
-// Jeśli user ma już aktywny pokój, zamiast przejścia pokazujemy dialog z pytaniem
-// czy najpierw wyjść (guardAgainstExistingRoom).
+
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +88,7 @@ export function LobbyPage() {
 
   return (
     <div>
-      {/* Header */}
+      
       <div className="pr-page-head">
         <div>
           <h1>{t('lobby.title', { game: gameLabel })}</h1>
@@ -110,7 +106,7 @@ export function LobbyPage() {
         </div>
       </div>
 
-      {/* Room list */}
+      
       {rooms.length === 0 ? (
         <div className="pr-card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--pr-text-muted)' }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>{meta.icon}</div>
@@ -180,17 +176,17 @@ export function LobbyPage() {
         </div>
       )}
 
-      {/* Create Room Dialog (game type locked to current lobby) */}
+      
       <CreateRoomDialog
         open={showCreate}
         onOpenChange={setShowCreate}
         gameType={gameType as GameType}
       />
 
-      {/* Join by Code Dialog */}
+      
       <JoinByCodeDialog open={showJoinCode} onOpenChange={setShowJoinCode} />
 
-      {/* Already-in-room dialog */}
+      
       {pendingAction && (
         <div className="pr-modal-backdrop" onClick={() => setPendingAction(null)}>
           <div className="pr-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>

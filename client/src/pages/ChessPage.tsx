@@ -1,14 +1,5 @@
-// Strona rozgrywki w szachy. Plansza 8x8 renderowana ręcznie z absolutnie pozycjonowanymi
-// figurami. Wzorzec dwustopniowego ruchu: kliknięcie figury -> chess:get_moves -> klient
-// pokazuje legalne pola (validMoves) -> kliknięcie pola docelowego -> chess:move.
-//
-// playerColorRef: ref do koloru gracza, żeby callbacki socket.on (zarejestrowane
-// raz na mount) miały zawsze aktualną wartość. useState alone bystąpiłby ze stale
-// closure przy nadejściu eventu po remount/reconnect.
-//
-// Plansza obraca się w zależności od koloru gracza - białe zawsze na dole z perspektywy
-// danego gracza. Konwersje squareToAlgebraic / algebraicToSquare między indeksami
-// (row, col) a notacją "e4".
+
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -32,14 +23,12 @@ const SQUARE_SIZE = 78;
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const RANKS = ["8", "7", "6", "5", "4", "3", "2", "1"];
 
-// Zamiana pary (row, col) na notację algebraiczną. row=0 to rank 8 (góra planszy).
-// Kolumny a-h to kody znaków 97-104 (a=97).
+
 function squareToAlgebraic(row: number, col: number): string {
   return String.fromCharCode(97 + col) + String(8 - row);
 }
 
-// Odwrotne mapowanie - "e4" -> [row, col]. Używane gdy serwer odpowiada listą
-// legalnych ruchów w notacji algebraicznej, a my chcemy podświetlić pola.
+
 function algebraicToSquare(sq: string): [number, number] {
   const col = sq.charCodeAt(0) - 97;
   const row = 8 - parseInt(sq[1], 10);
@@ -171,10 +160,10 @@ export function ChessPage() {
       setValidMoves(data.moves);
     });
 
-    // Serwer odrzucił ruch (np. nie twoja tura) - ignorujemy cicho, UI sam pokaże
-    // poprzedni stan, bo nie odebraliśmy chess:moved.
+    
+    
     socket.on("chess:invalid_move", () => {
-      /* ignorujemy */
+      
     });
 
     socket.on(
@@ -182,8 +171,8 @@ export function ChessPage() {
       ({ result: r, reason }: { result: string; reason: string }) => {
         setGameOver(true);
         setResult(`${r} - ${reason}`);
-        // Czyścimy activeRoomCode w AuthContext, żeby auto-redirect nie wciągał
-        // gracza z powrotem do skończonego pokoju, gdy wejdzie na "/".
+        
+        
         setActiveRoomCode(null);
       },
     );
@@ -206,14 +195,14 @@ export function ChessPage() {
       setMessages((prev) => [...prev, msg]);
     });
 
-    // Stan z router state - przekazany przez RoomPage po chess:start (race-condition fix).
-    // Dzięki temu plansza renderuje się natychmiast, bez czekania na refetch.
+    
+    
     if (location.state?.white && location.state?.board) {
       initFromData(location.state as Parameters<typeof initFromData>[0]);
     }
 
-    // Fallback: na wypadek wejścia bez state'a (np. odświeżenie strony) prosimy
-    // serwer o świeży snapshot. Jeśli partia trwa, dostaniemy chess:state.
+    
+    
     socket.emit("chess:get_state", { code });
 
     return () => {
@@ -235,11 +224,11 @@ export function ChessPage() {
       const clickedAlg = squareToAlgebraic(row, col);
       const piece = board[row]?.[col];
 
-      // If a square is selected and we clicked a valid move target
+      
       if (selectedSquare) {
         const isValid = validMoves.includes(clickedAlg);
         if (isValid) {
-          // Check for promotion (pawn reaching last rank)
+          
           const [fromRow] = algebraicToSquare(selectedSquare);
           const fromPiece =
             board[fromRow]?.[algebraicToSquare(selectedSquare)[1]];
@@ -264,7 +253,7 @@ export function ChessPage() {
         }
       }
 
-      // Click on own piece — select it and request valid moves
+      
       const myColorChar = playerColor;
       if (piece) {
         const pieceColor = piece === piece.toUpperCase() ? "w" : "b";
@@ -275,7 +264,7 @@ export function ChessPage() {
         }
       }
 
-      // Click on empty / opponent square without selection
+      
       setSelectedSquare(null);
       setValidMoves([]);
     },
@@ -333,7 +322,7 @@ export function ChessPage() {
     setMessageText("");
   };
 
-  // Find king position for check highlight
+  
   const findKingSquare = (): string | null => {
     if (!inCheck || board.length === 0) return null;
     const kingPiece = turn === "w" ? "K" : "k";
@@ -361,7 +350,7 @@ export function ChessPage() {
     return (
       <div className="pr-board-frame inline-block">
         <div className="flex">
-          {/* Rank labels column */}
+          
           <div className="flex flex-col" style={{ width: 24 }}>
             {rows.map((row) => (
               <div
@@ -378,7 +367,7 @@ export function ChessPage() {
             ))}
           </div>
 
-          {/* Board */}
+          
           <div
             style={{
               borderRadius: 8,
@@ -438,7 +427,7 @@ export function ChessPage() {
           </div>
         </div>
 
-        {/* File labels row */}
+        
         <div className="flex" style={{ paddingLeft: 24 }}>
           {displayFiles.map((file) => (
             <div
@@ -508,7 +497,7 @@ export function ChessPage() {
         <div className="w-full shrink-0">
           <DisconnectBanner />
         </div>
-        {/* Opponent timer */}
+        
         <div className="text-xl font-mono font-bold shrink-0">
           {formatTime(playerColor === "w" ? timeBlack : timeWhite)}
         </div>
@@ -524,7 +513,7 @@ export function ChessPage() {
           )}
         </div>
 
-        {/* Player timer */}
+        
         <div className="text-xl font-mono font-bold shrink-0">
           {formatTime(playerColor === "w" ? timeWhite : timeBlack)}
         </div>
@@ -627,12 +616,12 @@ export function ChessPage() {
           })()}
       </div>
 
-      {/* Sidebar: Move History + Chat */}
+      
       <div
         className="pr-game-side-col flex flex-col gap-4 w-80 shrink-0 h-full min-h-0"
         data-mobile-hidden={mobileView !== "chat"}
       >
-        {/* Move History */}
+        
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base">
@@ -667,7 +656,7 @@ export function ChessPage() {
           </CardContent>
         </Card>
 
-        {/* Chat */}
+        
         <Card className="flex flex-col h-72 shrink-0">
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base">Chat</CardTitle>

@@ -1,6 +1,5 @@
-// Modal "Dołącz po kodzie" - input na 6-znakowy kod pokoju. Po room:join
-// i odebraniu room:joined nawigujemy na /room/:code. Błędy (room not found,
-// full, gra w toku) trafiają z socketa jako room:error i pokazujemy je inline.
+
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

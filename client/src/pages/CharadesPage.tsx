@@ -1,12 +1,5 @@
-// Strona rozgrywki w kalambury. Drawer rysuje na canvasie, pozostali zgadują w czacie.
-// Strokes (kreski) są broadcastowane: w trakcie rysowania - charades:stroke_live
-// (live preview), po podniesieniu palca/myszy - charades:stroke (cała kreska
-// zapisywana w state'cie po stronie serwera). Zgadywanie:
-//   - dokładne trafienie -> charades:correct_guess + punkty,
-//   - prawie -> charades:close_guess (wyświetlamy "ciepło" w UI),
-//   - chybione -> normalna wiadomość w czacie.
-// Po zakończeniu rundy serwer wysyła charades:round_end z punktami i wybiera
-// następnego drawera, dopóki nie skończy się pula rund.
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +47,7 @@ export function CharadesPage() {
   const [totalCycles, setTotalCycles] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<'board' | 'scores'>('board');
 
-  // Drawing state
+  
   const isDrawingRef = useRef(false);
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
   const lastEmitRef = useRef(0);
@@ -97,8 +90,8 @@ export function CharadesPage() {
   useEffect(() => {
     if (!socket || !code) return;
 
-    // Request current game state on mount — handles the race where charades:new_round
-    // fires before CharadesPage has finished mounting and registered its listeners.
+    
+    
     socket.emit('charades:get_state', { code });
 
     socket.on('charades:state', (data: {
@@ -162,7 +155,7 @@ export function CharadesPage() {
       setTimeLeft(tl);
     });
 
-    // Joined mid-game: server sends current state so we can sync UI
+    
     socket.on('charades:current_state', (data: {
       drawerSocketId: string;
       drawerName: string;
@@ -175,7 +168,7 @@ export function CharadesPage() {
       setScores(data.scores);
     });
 
-    // Another player joined mid-game
+    
     socket.on('charades:player_joined', ({ scores: s }: { scores: CharadesScore[] }) => {
       setScores(s);
     });
@@ -219,7 +212,7 @@ export function CharadesPage() {
     const points = currentStrokeRef.current;
     points.push(point);
 
-    // Draw locally
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -233,7 +226,7 @@ export function CharadesPage() {
     ctx.lineTo(point.x, point.y);
     ctx.stroke();
 
-    // Stream accumulated points since last emit (throttled to ~60fps)
+    
     if (!socket || !code) return;
     const now = Date.now();
     if (now - lastEmitRef.current < 16) return;
@@ -241,7 +234,7 @@ export function CharadesPage() {
     const segment = points.slice(lastEmittedIdxRef.current);
     if (segment.length >= 2) {
       socket.emit('charades:draw', { code, stroke: { points: segment, color: drawColor, width: drawWidth } });
-      // Overlap by 1 so the next segment starts exactly where this one ended
+      
       lastEmittedIdxRef.current = points.length - 1;
     }
   };
@@ -250,7 +243,7 @@ export function CharadesPage() {
     if (!isDrawingRef.current || !isDrawer || !socket || !code) return;
     isDrawingRef.current = false;
 
-    // Flush all remaining unsent points
+    
     const points = currentStrokeRef.current;
     const remaining = points.slice(lastEmittedIdxRef.current);
     if (remaining.length >= 2) {
@@ -302,12 +295,12 @@ export function CharadesPage() {
         <div className="w-full">
           <DisconnectBanner />
         </div>
-        {/* Header */}
+        
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12, width: '100%', flexWrap: 'wrap',
         }}>
-          {/* Left: role + word */}
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{
               fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 15,
@@ -331,7 +324,7 @@ export function CharadesPage() {
             )}
           </div>
 
-          {/* Right: round + timer + leave */}
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {totalCycles !== null && (
               <span style={{
@@ -366,7 +359,7 @@ export function CharadesPage() {
           </div>
         </div>
 
-        {/* Canvas */}
+        
         <div style={{
           borderRadius: 14, overflow: 'hidden', background: '#fff',
           boxShadow: '0 4px 24px rgba(0,0,0,0.25)', width: '100%',
@@ -385,7 +378,7 @@ export function CharadesPage() {
           />
         </div>
 
-        {/* Drawing tools */}
+        
         {isDrawer && (
           <div className="pr-draw-tools flex items-center gap-2 flex-wrap justify-center w-full">
             <div className="flex gap-1 flex-wrap justify-center">
@@ -416,7 +409,7 @@ export function CharadesPage() {
           </div>
         )}
 
-        {/* Mobile-only chat – hidden on desktop via CSS */}
+        
         <div className="pr-charades-mobile-chat">
           <div className="pr-charades-mobile-messages">
             {guesses.map((g, i) => (
@@ -448,7 +441,7 @@ export function CharadesPage() {
           )}
         </div>
 
-        {/* Round/Game over */}
+        
         {roundOver && !gameOver && (
           <Card className="w-full max-w-md text-center">
             <CardContent className="py-4">
@@ -489,7 +482,7 @@ export function CharadesPage() {
                   {myRank > 0 ? t('game.place', { place: myRank }) : t('game.gameOver')}
                 </h2>
 
-                {/* Scoreboard */}
+                
                 <div style={{ width: '100%', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {sorted.map((s, i) => (
                     <div key={i} style={{
@@ -527,12 +520,12 @@ export function CharadesPage() {
         })()}
       </div>
 
-      {/* Sidebar: scores + guesses */}
+      
       <div
         className="pr-game-side-col flex flex-col gap-4 w-64 shrink-0 h-full min-h-0"
         data-mobile-hidden={mobileView !== 'scores'}
       >
-        {/* Scores */}
+        
         <Card className="shrink-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">{t('charades.scores')}</CardTitle>
@@ -549,7 +542,7 @@ export function CharadesPage() {
           </CardContent>
         </Card>
 
-        {/* Guesses – desktop only (hidden on mobile via CSS) */}
+        
         <Card className="pr-charades-desktop-chat flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Chat</CardTitle>

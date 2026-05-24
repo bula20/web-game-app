@@ -1,7 +1,5 @@
-// SocketContext - udostępnia instancję socket.io-client w drzewie React i zarządza
-// auto-redirectem do aktywnego pokoju. Połączenie samo nie jest tutaj tworzone -
-// utworzy je connectSocket() z AuthContextu po zalogowaniu; tutaj tylko obserwujemy
-// jego stan.
+
+
 import {
   createContext,
   useContext,
@@ -31,8 +29,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  // Trzymamy aktualny location w ref, żeby callbacki na evenetach socketu czytały
-  // świeżą wartość bez konieczności re-podpinania listenera przy każdej zmianie URL.
+  
+  
   const locationRef = useRef(location);
   useEffect(() => {
     locationRef.current = location;
@@ -40,15 +38,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      
       setSocket(null);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      
       setIsConnected(false);
       return;
     }
 
-    // checkSocket próbuje pobrać singleton; jeśli nie istnieje (np. AuthContext
-    // jeszcze nie wywołał connectSocket), poll co 1s, aż się pojawi.
+    
+    
     const checkSocket = () => {
       const s = getSocket();
       if (s) {
@@ -57,15 +55,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
         s.on("connect", () => {
           setIsConnected(true);
-          // Po (re)connect pytamy serwer o aktywny pokój - jeśli user jest w nim,
-          // nawigacja przeniesie go z neutralnej strony do gry/poczekalni.
+          
+          
           s.emit("user:get_active_room");
         });
         s.on("disconnect", () => setIsConnected(false));
 
-        // Auto-redirect: jeśli user ma aktywny pokój, a stoi na "/" lub "/lobby/*",
-        // przekieruj go bezpośrednio do tego pokoju lub do trwającej gry.
-        // Nie ruszamy go, gdy jest już na /room/* lub /game/* (mógłby utknąć w pętli).
+        
+        
+        
         s.on(
           "user:active_room",
           (data: { code: string; gameType: string; status: string } | null) => {

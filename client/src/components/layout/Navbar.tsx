@@ -1,6 +1,5 @@
-// Górny pasek nawigacji - logo, linki do historii i my-room, przycisk Create Room
-// (otwiera CreateRoomDialog), avatar otwierający slide-in ProfilePanel, przełącznik
-// języka (PL/EN) i logout. Niezalogowani widzą skrócony wariant z linkami login/register.
+
+
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +35,7 @@ export function Navbar() {
   return (
     <>
     <header className="pr-navbar">
-      {/* Left: logo + nav links */}
+      
       <div className="pr-navbar-left" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           <img src="/logo.png" alt="PlayRoom" className="pr-navbar-logo-img" style={{ height: 52, width: 'auto', display: 'block' }} />
@@ -66,7 +65,7 @@ export function Navbar() {
         </nav>
       </div>
 
-      {/* Right: actions + user */}
+      
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="pr-nav-link" onClick={toggleLanguage} title={t('nav.language', 'Język')}>
           <Globe size={15} />

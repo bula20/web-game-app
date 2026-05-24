@@ -1,7 +1,5 @@
-// Model zarejestrowanego użytkownika. Goście NIE są tutaj zapisywani - są ulotni
-// (id z prefixem "guest_..." istnieje tylko w tokenie i in-memory mapach).
-// passwordHash jest opcjonalny, bo użytkownicy zalogowani przez Google nie mają
-// hasła; podobnie googleId jest puste dla rejestracji email/hasło.
+
+
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IUser extends Document {

@@ -1,7 +1,5 @@
-// Strona główna. Renderuje dwa różne widoki w zależności od stanu auth:
-//   - niezalogowany: landing page z opisem gier i CTA do rejestracji/loginu,
-//   - zalogowany: dashboard z ActiveRoomCard, RecentMatches i kafelkami gier.
-// Jeden komponent dla obu, bo dużo treści (kafelki gier, jak to działa) jest wspólne.
+
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -118,7 +116,7 @@ export function HomePage() {
 
   return (
     <div className={user ? "pr-dashboard" : "pr-landing"}>
-      {/* HERO */}
+      
       <section className={`pr-hero fade-up ${user ? "pr-hero-compact" : ""}`}>
         {!user && (
           <div className="pr-hero-tagline">
@@ -150,14 +148,14 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* DASHBOARD: active room card */}
+      
       {user && user.activeRoomCode && (
         <section className="pr-section fade-up" style={{ paddingTop: 12 }}>
           <ActiveRoomCard code={user.activeRoomCode} />
         </section>
       )}
 
-      {/* GAMES */}
+      
       <section className="pr-section">
         <h2 className="pr-section-title">
           {t("home.games.title", "Wybierz grę")}
@@ -189,7 +187,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS — only for landing (logged out) */}
+      
       {!user && (
         <section className="pr-section">
           <h2 className="pr-section-title">
@@ -213,7 +211,7 @@ export function HomePage() {
         </section>
       )}
 
-      {/* DASHBOARD: recent matches (only for logged-in non-guest) */}
+      
       {user && !user.isGuest && (
         <section className="pr-section">
           <h2 className="pr-section-title">
@@ -223,7 +221,7 @@ export function HomePage() {
         </section>
       )}
 
-      {/* FOOTER (landing only) */}
+      
       {!user && (
         <footer className="pr-footer">
           <div

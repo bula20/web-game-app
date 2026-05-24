@@ -1,11 +1,5 @@
-// Handler eventów Socket.io dla szachów. Wzorzec dwustopniowego ruchu:
-//   1) klient klika figurę -> wysyła chess:get_moves -> serwer odpowiada
-//      chess:valid_moves z listą legalnych pól (klient pokazuje podpowiedzi),
-//   2) klient klika pole docelowe -> wysyła chess:move -> serwer waliduje
-//      jeszcze raz (anti-cheat) i robi ruch.
-// Stan każdej trwającej partii trzymamy w mapie activeGames<code, ChessGameState>
-// (in-memory; brak persystencji - po restarcie serwera trwające partie przepadają).
-// Po zakończeniu (mat, pat, czas, walkower, rozłączenie) zapis do kolekcji Game.
+
+
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { Room } from '../models/Room.js';
@@ -48,9 +42,7 @@ interface ChessGameState {
 
 const activeGames = new Map<string, ChessGameState>();
 
-// Wyznacza kolor gracza w danej partii. Najpierw porównujemy po userId (stabilne
-// między reconnectami - zarówno dla zalogowanych jak i goscia, którego id nie
-// zmienia się dopóki ma ten sam token), a w razie braku userId po socketId.
+
 function playerColor(state: ChessGameState, socket: AuthenticatedSocket): 'w' | 'b' | null {
   const uid = socket.userId;
   if (uid) {
@@ -62,8 +54,7 @@ function playerColor(state: ChessGameState, socket: AuthenticatedSocket): 'w' | 
   return null;
 }
 
-// Rejestracja callbacku w presenceHandler - po wygaśnięciu GAME_DISCONNECT_GRACE
-// (20 s) gracz, który nie wrócił, przegrywa walkowerem na korzyść przeciwnika.
+
 registerGameDisconnectHandler('chess', (io, code, userId) => {
   const state = activeGames.get(code);
   if (!state) return;
@@ -73,9 +64,7 @@ registerGameDisconnectHandler('chess', (io, code, userId) => {
   if (winner) endGame(io, code, winner, 'disconnect');
 });
 
-// Po reconnect gracza presenceHandler woła ten callback - aktualizujemy socketId
-// w naszym in-memory state i wysyłamy graczowi pełny snapshot partii (board,
-// turę, timery, listę ruchów), żeby zsynchronizować jego UI z serwerem.
+
 registerGameReconnectHandler('chess', (_io, socket, code) => {
   const state = activeGames.get(code);
   if (!state) return;
@@ -103,8 +92,8 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
       const room = await Room.findOne({ code, gameType: 'chess', status: 'waiting' });
       if (!room || room.players.length < 2) return;
 
-      // Tylko host (players[0]) może wystartować grę. activeGames.has(code)
-      // chroni przed podwójnym uruchomieniem (np. dwa kliki w "Start").
+      
+      
       if (room.players[0].socketId !== socket.id) return;
 
       if (activeGames.has(code)) return;
@@ -115,7 +104,7 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
       const gameState = createInitialState();
       const timerSeconds = room.timerMinutes * 60;
 
-      // Losowe przydzielenie kolorów - host nie zawsze gra białymi.
+      
       const shuffled = Math.random() > 0.5 ? [room.players[0], room.players[1]] : [room.players[1], room.players[0]];
 
       const state: ChessGameState = {
@@ -133,8 +122,8 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
 
       activeGames.set(code, state);
 
-      // Lokalny zegar tykający co sekundę po stronie tego, kto ma turę.
-      // Jeśli któryś dojdzie do 0 - drugi wygrywa przez przekroczenie czasu.
+      
+      
       state.timerInterval = setInterval(() => {
         if (state.gameState.turn === 'w') {
           state.timeWhite -= 1;
@@ -166,9 +155,9 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     }
   });
 
-  // Klient woła to przy mountcie ChessPage jako fallback po race condition:
-  // jeśli wszedł na stronę zanim chess:start dotarł, dostaje świeży snapshot.
-  // Jednocześnie aktualizujemy socketId, jeśli to reconnect.
+  
+  
+  
   socket.on('chess:get_state', ({ code }: { code: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
@@ -206,9 +195,9 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     });
   });
 
-  // Wykonanie ruchu. Walidacja po stronie serwera (anti-cheat) - klient i tak
-  // sprawdza, ale to silnik na serwerze decyduje czy ruch jest legalny.
-  // promotion (opcjonalne) - litera figury, na którą promujemy pionka (Q/R/B/N).
+  
+  
+  
   socket.on('chess:move', ({ code, from, to, promotion }: { code: string; from: string; to: string; promotion?: string }) => {
     const state = activeGames.get(code);
     if (!state) return;
@@ -263,13 +252,10 @@ export function setupChessHandler(io: Server, socket: AuthenticatedSocket) {
     endGame(io, code, winner, 'resignation');
   });
 
-  // NOTE: no socket.on('disconnect') — presenceHandler calls our registered disconnect callback after grace period.
+  
 }
 
-// Kończy partię: wyłącza zegar, wysyła chess:game_over, zapisuje rekord do
-// kolekcji Game (z listą ruchów do późniejszej replay'owej historii) i czyści
-// activeRoomCode wszystkich uczestników, żeby auto-redirect ich nie ciągnął
-// z powrotem do skończonego pokoju.
+
 async function endGame(io: Server, code: string, winner: string, reason: string) {
   const state = activeGames.get(code);
   if (!state) return;
@@ -297,7 +283,7 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
       duration,
       finishedAt: new Date(),
     });
-    // Limit 50 ostatnich partii per user - usuwamy najstarsze, żeby nie zaśmiecać bazy.
+    
     await pruneOldGames([state.white.userId, state.black.userId]);
   } catch (error) {
     console.error('Failed to save chess game:', error);
@@ -305,14 +291,14 @@ async function endGame(io: Server, code: string, winner: string, reason: string)
 
   try {
     await Room.findOneAndUpdate({ code }, { status: 'finished' });
-    // Clear activeRoomCode for all participants (logged-in users in DB, guests in memory)
+    
     const ids = [state.white.userId, state.black.userId].filter(Boolean) as string[];
     const userIds = ids.filter((id) => !id.startsWith('guest_'));
     if (userIds.length) {
       await User.updateMany({ _id: { $in: userIds } }, { activeRoomCode: null });
     }
     ids.filter((id) => id.startsWith('guest_')).forEach((gid) => guestActiveRooms.delete(gid));
-  } catch { /* ignore */ }
+  } catch {  }
 
   activeGames.delete(code);
 }

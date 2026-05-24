@@ -1,5 +1,5 @@
-// Komponent Input (shadcn/ui). Stylowany wrapper nad natywnym <input> - pełna
-// kontrola przez className, focus ring zgodny z motywem aplikacji.
+
+
 import * as React from "react"
 import { cn } from "@/lib/utils"
 

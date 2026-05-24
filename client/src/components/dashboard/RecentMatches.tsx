@@ -1,7 +1,5 @@
-// Lista ostatnich N partii (domyślnie 5) wyświetlana na dashboardzie. Pobiera
-// dane z GET /api/games/history i lokalnie odbiera z paginacji pierwsze N rekordów.
-// Wynik per gra liczony jest na podstawie pól GameHistory: dla szachów/warcabów
-// porównujemy `winner` z id usera, dla kalamburów - kto zdobył najwięcej punktów.
+
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -40,8 +38,8 @@ export function RecentMatches({ limit = 5, onNavigate }: RecentMatchesProps) {
     return () => { cancelled = true; };
   }, [limit]);
 
-  // Liczy wynik jednej partii z perspektywy zalogowanego użytkownika. Dla kalamburów
-  // wygrywa ten z najwyższym wynikiem (remis traktowany jako lost, bo brak draw w tym trybie).
+  
+  
   const getResult = (game: GameHistory): 'won' | 'lost' | 'drew' => {
     if (game.gameType === 'charades') {
       const myScore = game.scores?.find(s => s.userId === user?.id);

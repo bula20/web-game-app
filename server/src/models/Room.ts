@@ -1,10 +1,5 @@
-// Model pokoju gry. Pokój jest pojemnikiem, w którym gracze czekają i ostatecznie
-// rozgrywają partię. Przepływ statusów:
-//   waiting       - utworzony, host dodaje graczy, czeka na start.
-//   host_away     - host stracił połączenie; pokój żyje 120 s, czekając na powrót.
-//   in_progress   - gra trwa (zegary tykają, eventy chess:* / checkers:* / charades:*).
-//   finished      - gra skończona; rekord pozostaje w bazie do końca migracji,
-//                   a zwykle endGame od razu po zapisie do Game kasuje pokój.
+
+
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export type GameType = "chess" | "checkers" | "charades";

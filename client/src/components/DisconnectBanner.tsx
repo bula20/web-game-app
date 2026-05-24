@@ -1,7 +1,5 @@
-// Banner informujący o rozłączonych graczach w trakcie gry. Serwer wysyła
-// player:disconnected gdy gracz traci połączenie (z grace periodem 20 s na powrót),
-// player:reconnected gdy wróci, player:reconnect_expired gdy nie zdążył.
-// Komponent pokazuje listę rozłączonych z lokalnym countdownem (1 s tick).
+
+
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSocket } from '@/context/SocketContext';
@@ -15,8 +13,8 @@ interface DisconnectedPlayer {
 export function DisconnectBanner() {
   const { t } = useTranslation();
   const { socket } = useSocket();
-  // Map keyed by userId, żeby ten sam gracz pojawił się w bannerze tylko raz, nawet gdyby
-  // serwer wysłał event dwukrotnie.
+  
+  
   const [disconnected, setDisconnected] = useState<Map<string, DisconnectedPlayer>>(new Map());
 
   useEffect(() => {
@@ -54,8 +52,8 @@ export function DisconnectBanner() {
     };
   }, [socket]);
 
-  // Lokalny countdown - zmniejsza expiresIn co sekundę. Wpis znika z mapy, gdy
-  // dochodzi do 0 (mimo że serwer i tak wyśle player:reconnect_expired).
+  
+  
   useEffect(() => {
     if (disconnected.size === 0) return;
     const tick = setInterval(() => {
@@ -68,7 +66,7 @@ export function DisconnectBanner() {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [disconnected.size > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [disconnected.size > 0]); 
 
   if (disconnected.size === 0) return null;
 

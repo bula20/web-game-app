@@ -62,7 +62,7 @@ export function setupSocketServer(httpServer: HttpServer) {
           });
         }
       } catch {
-        /* ignorujemy: brak Usera w bazie lub problem z bazą */
+        
       }
     });
 

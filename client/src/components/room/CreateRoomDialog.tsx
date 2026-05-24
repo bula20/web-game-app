@@ -1,8 +1,5 @@
-// Modal "Stwórz pokój" - wybór gry, public/private, max graczy (kalambury),
-// limit czasu (szachy/warcaby), liczba rund i czas rysowania (kalambury).
-// Po wysłaniu room:create i odebraniu room:joined nawigujemy na /room/:code.
-// Dla niezalogowanych (gdy próbują na nieautoryzowanej stronie) wpada
-// loginAsGuest przed wysłaniem - dzięki temu można stworzyć pokój będąc gościem.
+
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -140,7 +137,7 @@ export function CreateRoomDialog({ open, onOpenChange, gameType: lockedGameType 
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* Game picker (only when not locked) */}
+            
             {!lockedGameType && (
               <div>
                 <div className="pr-label">{t('home.create.chooseGame', 'Wybierz grę')}</div>
@@ -171,7 +168,7 @@ export function CreateRoomDialog({ open, onOpenChange, gameType: lockedGameType 
               </div>
             )}
 
-            {/* Visibility */}
+            
             <div>
               <div className="pr-label">{t('lobby.visibility', 'Widoczność')}</div>
               <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
@@ -192,7 +189,7 @@ export function CreateRoomDialog({ open, onOpenChange, gameType: lockedGameType 
               </div>
             </div>
 
-            {/* Game-specific config */}
+            
             {selectedGame === 'charades' && (
               <>
                 <NumberField

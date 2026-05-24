@@ -1,6 +1,5 @@
-// Komponent Dialog (shadcn/ui na bazie @radix-ui/react-dialog). Modal z overlayem,
-// portalem i przyciskiem zamykania w rogu. Używany przez CreateRoomDialog,
-// JoinByCodeDialog oraz okno wyboru promocji w szachach.
+
+
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"

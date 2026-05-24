@@ -1,6 +1,5 @@
-// Komponent Button (shadcn/ui). Wrapper nad natywnym <button> z wariantami stylów
-// (default/destructive/outline/secondary/ghost/link) i rozmiarami zarządzanymi przez CVA.
-// Prop asChild pozwala renderować dowolny element (np. <a>) z zachowaniem stylów.
+
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"

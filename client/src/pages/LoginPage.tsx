@@ -1,12 +1,11 @@
-// Strona logowania. Trzy ścieżki: email/hasło (login z AuthContext), gość
-// (loginAsGuest), Google OAuth (przekierowanie na /api/auth/google - serwer
-// po sukcesie wraca z tokenem na /auth/callback).
+
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 
-// Bezpośredni link do Google OAuth (poza axios, bo to przekierowanie pełnej strony).
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const LABEL_STYLE = {

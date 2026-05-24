@@ -1,27 +1,22 @@
-// Silnik warcabów - czyste funkcje bez efektów ubocznych. Plansza 8x8, pionki tylko
-// na czarnych polach (suma indeksów nieparzysta). Konwencja:
-//   'w' / 'b' = zwykły pionek białych / czarnych,
-//   'W' / 'B' = damka (king) - rusza się i bije w 4 strony, na dowolną odległość.
-// Reguły wymuszone: jeśli istnieje możliwe bicie, gracz MUSI bić. Po dotarciu
-// do końcowego rzędu pionek awansuje na damkę.
+
+
 export type Piece = null | "w" | "b" | "W" | "B";
 export type Board = Piece[][];
 
-// Ustawienie startowe: 12 czarnych w 3 górnych rzędach, 12 białych w 3 dolnych.
-// Środkowe 2 rzędy puste.
+
 export function createInitialBoard(): Board {
   const board: Board = Array(8)
     .fill(null)
     .map(() => Array(8).fill(null));
 
-  // Place black pieces (top)
+  
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 8; col++) {
       if ((row + col) % 2 === 1) board[row][col] = "b";
     }
   }
 
-  // Place white pieces (bottom)
+  
   for (let row = 5; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       if ((row + col) % 2 === 1) board[row][col] = "w";
@@ -31,10 +26,7 @@ export function createInitialBoard(): Board {
   return board;
 }
 
-// Zwraca listę legalnych pól docelowych dla pionka na (row, col).
-// Reguła wymuszonego bicia ma 2 poziomy: jeśli ten konkretny pionek może bić,
-// zwracamy tylko bicia; jeśli inny pionek tego samego koloru może bić, ten pionek
-// nie może wcale się ruszyć (pusta lista).
+
 export function getValidMoves(
   board: Board,
   row: number,
@@ -51,7 +43,7 @@ export function getValidMoves(
 
   if (hasAnyCaptureForColor(board, color)) return [];
 
-  // Regular moves
+  
   const moves: [number, number][] = [];
   const directions = getDirections(color, isKing);
 
@@ -87,7 +79,7 @@ function getCaptures(
           [-1, 1],
           [1, -1],
           [1, 1],
-        ] // both directions for captures
+        ] 
       : [
           [-1, -1],
           [-1, 1],
@@ -160,7 +152,7 @@ export function makeMove(
   newBoard[tr][tc] = piece;
   newBoard[fr][fc] = null;
 
-  // Check for kinging
+  
   let kinged = false;
   if (!isKing) {
     if ((color === "w" && tr === 0) || (color === "b" && tr === 7)) {
@@ -169,7 +161,7 @@ export function makeMove(
     }
   }
 
-  // Can continue capturing?
+  
   let canContinue = false;
   if (captured && !kinged) {
     const newIsKing = newBoard[tr][tc] === newBoard[tr][tc]!.toUpperCase();

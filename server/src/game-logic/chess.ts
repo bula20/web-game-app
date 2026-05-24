@@ -1,13 +1,7 @@
-// ============================================================================
-// Custom Chess Engine — zero external dependencies
-// ============================================================================
-// Silnik szachowy bez zewnętrznych bibliotek - czyste funkcje operujące
-// na strukturze stanu (board + metadane). Plansza 8x8: board[0]=rank 8 (czarne
-// na górze), board[7]=rank 1 (białe na dole). Wielkie litery=białe, male=czarne.
-// Implementuje pełne zasady FIDE: roszada, en passant, promocja, mat/pat,
-// reguła 50 ruchów oraz niewystarczający materiał.
 
-// --- Types ---
+
+
+
 
 export type ChessPiece =
   | "P"
@@ -25,7 +19,7 @@ export type ChessPiece =
 export type Square = ChessPiece | null;
 export type Board = Square[][];
 export type Color = "w" | "b";
-export type Position = [number, number]; // [row, col]
+export type Position = [number, number]; 
 
 export interface CastlingRights {
   whiteKingside: boolean;
@@ -56,10 +50,9 @@ export interface MoveResult {
   isEnPassant: boolean;
 }
 
-// --- Constants ---
 
-// Board layout: row 0 = rank 8 (top/black), row 7 = rank 1 (bottom/white)
-// col 0 = file a, col 7 = file h
+
+
 
 const KNIGHT_OFFSETS: Position[] = [
   [-2, -1],
@@ -86,7 +79,7 @@ const ROOK_DIRS: Position[] = [
 ];
 const ALL_DIRS: Position[] = [...BISHOP_DIRS, ...ROOK_DIRS];
 
-// --- Basic helpers ---
+
 
 function isInBounds(row: number, col: number): boolean {
   return row >= 0 && row < 8 && col >= 0 && col < 8;
@@ -118,7 +111,7 @@ function findKing(board: Board, color: Color): Position {
       if (board[r][c] === king) return [r, c];
     }
   }
-  // Should never happen in a valid game state
+  
   return [-1, -1];
 }
 
@@ -139,21 +132,17 @@ function cloneState(state: ChessState): ChessState {
   };
 }
 
-// --- Attack detection ---
 
-// Check if a square is attacked by any piece of the given color.
-// Uses "reverse ray" approach: look outward from the target square.
-// Sprawdza czy dane pole jest atakowane przez figury kolorow byColor.
-// Zamiast iterowac po wszystkich figurach przeciwnika, "wysylamy promienie"
-// z atakowanego pola we wszystkich kierunkach - duzo szybsze przy wykrywaniu szacha.
+
+
 function isSquareAttackedBy(
   board: Board,
   row: number,
   col: number,
   byColor: Color,
 ): boolean {
-  // 1. Pawn attacks
-  const pawnDir = byColor === "w" ? 1 : -1; // white pawns attack from below (higher row)
+  
+  const pawnDir = byColor === "w" ? 1 : -1; 
   const pawn: ChessPiece = byColor === "w" ? "P" : "p";
   for (const dc of [-1, 1]) {
     const pr = row + pawnDir;
@@ -161,7 +150,7 @@ function isSquareAttackedBy(
     if (isInBounds(pr, pc) && board[pr][pc] === pawn) return true;
   }
 
-  // 2. Knight attacks
+  
   const knight: ChessPiece = byColor === "w" ? "N" : "n";
   for (const [dr, dc] of KNIGHT_OFFSETS) {
     const nr = row + dr;
@@ -169,7 +158,7 @@ function isSquareAttackedBy(
     if (isInBounds(nr, nc) && board[nr][nc] === knight) return true;
   }
 
-  // 3. King attacks
+  
   const king: ChessPiece = byColor === "w" ? "K" : "k";
   for (const [dr, dc] of ALL_DIRS) {
     const kr = row + dr;
@@ -177,7 +166,7 @@ function isSquareAttackedBy(
     if (isInBounds(kr, kc) && board[kr][kc] === king) return true;
   }
 
-  // 4. Diagonal sliding (bishop/queen)
+  
   const bishop: ChessPiece = byColor === "w" ? "B" : "b";
   const queen: ChessPiece = byColor === "w" ? "Q" : "q";
   for (const [dr, dc] of BISHOP_DIRS) {
@@ -187,14 +176,14 @@ function isSquareAttackedBy(
       const p = board[r][c];
       if (p) {
         if (p === bishop || p === queen) return true;
-        break; // blocked by another piece
+        break; 
       }
       r += dr;
       c += dc;
     }
   }
 
-  // 5. Straight sliding (rook/queen)
+  
   const rook: ChessPiece = byColor === "w" ? "R" : "r";
   for (const [dr, dc] of ROOK_DIRS) {
     let r = row + dr,
@@ -218,8 +207,7 @@ function isInCheckRaw(board: Board, color: Color): boolean {
   return isSquareAttackedBy(board, kr, kc, oppositeColor(color));
 }
 
-// --- Pseudo-legal move generators ---
-// These return geometrically valid destinations without checking if the king remains safe.
+
 
 function getKnightMovesPseudo(
   board: Board,
@@ -253,7 +241,7 @@ function getSlidingMovesPseudo(
       const target = board[r][c];
       if (isFriendly(target, color)) break;
       moves.push([r, c]);
-      if (target) break; // capture, stop sliding
+      if (target) break; 
       r += dr;
       c += dc;
     }
@@ -296,32 +284,32 @@ function getPawnMovesPseudo(
   enPassantTarget: Position | null,
 ): Position[] {
   const moves: Position[] = [];
-  const dir = color === "w" ? -1 : 1; // white moves up (decreasing row), black moves down
+  const dir = color === "w" ? -1 : 1; 
   const startRow = color === "w" ? 6 : 1;
 
-  // Single push
+  
   const oneR = row + dir;
   if (isInBounds(oneR, col) && !board[oneR][col]) {
     moves.push([oneR, col]);
-    // Double push from starting position
+    
     const twoR = row + 2 * dir;
     if (row === startRow && !board[twoR][col]) {
       moves.push([twoR, col]);
     }
   }
 
-  // Diagonal captures
+  
   for (const dc of [-1, 1]) {
     const nr = row + dir,
       nc = col + dc;
     if (!isInBounds(nr, nc)) continue;
 
-    // Normal capture
+    
     if (isOpponent(board[nr][nc], color)) {
       moves.push([nr, nc]);
     }
 
-    // En passant
+    
     if (
       enPassantTarget &&
       enPassantTarget[0] === nr &&
@@ -343,7 +331,7 @@ function getKingMovesPseudo(
 ): Position[] {
   const moves: Position[] = [];
 
-  // Normal king moves (8 directions)
+  
   for (const [dr, dc] of ALL_DIRS) {
     const nr = row + dr,
       nc = col + dc;
@@ -352,13 +340,13 @@ function getKingMovesPseudo(
     }
   }
 
-  // Castling
+  
   const enemy = oppositeColor(color);
   const inCheck = isSquareAttackedBy(board, row, col, enemy);
-  if (inCheck) return moves; // can't castle while in check
+  if (inCheck) return moves; 
 
   if (color === "w" && row === 7 && col === 4) {
-    // White kingside: e1→g1, rook h1→f1
+    
     if (
       castling.whiteKingside &&
       board[7][7] === "R" &&
@@ -369,7 +357,7 @@ function getKingMovesPseudo(
     ) {
       moves.push([7, 6]);
     }
-    // White queenside: e1→c1, rook a1→d1
+    
     if (
       castling.whiteQueenside &&
       board[7][0] === "R" &&
@@ -382,7 +370,7 @@ function getKingMovesPseudo(
       moves.push([7, 2]);
     }
   } else if (color === "b" && row === 0 && col === 4) {
-    // Black kingside: e8→g8
+    
     if (
       castling.blackKingside &&
       board[0][7] === "r" &&
@@ -393,7 +381,7 @@ function getKingMovesPseudo(
     ) {
       moves.push([0, 6]);
     }
-    // Black queenside: e8→c8
+    
     if (
       castling.blackQueenside &&
       board[0][0] === "r" &&
@@ -446,10 +434,9 @@ function getPseudoLegalMoves(
   }
 }
 
-// --- Legal move filtering ---
 
-// Apply a move on a cloned board (minimal, only for legality check).
-// Does NOT update castling/en passant/clocks — only moves pieces.
+
+
 function applyMoveOnBoard(
   board: Board,
   from: Position,
@@ -461,19 +448,19 @@ function applyMoveOnBoard(
   const [tr, tc] = to;
   const piece = newBoard[fr][fc];
 
-  // En passant capture: pawn moves diagonally to empty square
+  
   if (piece && piece.toLowerCase() === "p" && fc !== tc && !newBoard[tr][tc]) {
-    newBoard[fr][tc] = null; // remove captured pawn
+    newBoard[fr][tc] = null; 
   }
 
-  // Castling: move the rook too
+  
   if (piece && piece.toLowerCase() === "k" && Math.abs(tc - fc) === 2) {
     if (tc === 6) {
-      // kingside
+      
       newBoard[fr][5] = newBoard[fr][7];
       newBoard[fr][7] = null;
     } else if (tc === 2) {
-      // queenside
+      
       newBoard[fr][3] = newBoard[fr][0];
       newBoard[fr][0] = null;
     }
@@ -485,7 +472,7 @@ function applyMoveOnBoard(
   return newBoard;
 }
 
-// --- Exported API ---
+
 
 export function getValidMoves(
   state: ChessState,
@@ -525,7 +512,7 @@ export function hasMovesForColor(state: ChessState, color: Color): boolean {
     for (let c = 0; c < 8; c++) {
       const piece = state.board[r][c];
       if (piece && getColor(piece) === color) {
-        // Temporarily set turn to this color to check moves
+        
         const tempState = { ...state, turn: color };
         if (getValidMoves(tempState, r, c).length > 0) return true;
       }
@@ -534,18 +521,18 @@ export function hasMovesForColor(state: ChessState, color: Color): boolean {
   return false;
 }
 
-// --- Board creation ---
+
 
 export function createInitialBoard(): Board {
   return [
-    ["r", "n", "b", "q", "k", "b", "n", "r"], // row 0 = rank 8
-    ["p", "p", "p", "p", "p", "p", "p", "p"], // row 1 = rank 7
+    ["r", "n", "b", "q", "k", "b", "n", "r"], 
+    ["p", "p", "p", "p", "p", "p", "p", "p"], 
     [null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null],
-    ["P", "P", "P", "P", "P", "P", "P", "P"], // row 6 = rank 2
-    ["R", "N", "B", "Q", "K", "B", "N", "R"], // row 7 = rank 1
+    ["P", "P", "P", "P", "P", "P", "P", "P"], 
+    ["R", "N", "B", "Q", "K", "B", "N", "R"], 
   ];
 }
 
@@ -565,7 +552,7 @@ export function createInitialState(): ChessState {
   };
 }
 
-// --- Coordinate conversion ---
+
 
 export function squareToAlgebraic(row: number, col: number): string {
   return String.fromCharCode(97 + col) + String(8 - row);
@@ -577,10 +564,9 @@ export function algebraicToSquare(sq: string): Position {
   return [row, col];
 }
 
-// --- SAN generation ---
 
-// Generate Standard Algebraic Notation for a move BEFORE it is applied.
-// The move must be legal (caller should have validated).
+
+
 function generateSAN(
   state: ChessState,
   from: Position,
@@ -594,10 +580,10 @@ function generateSAN(
   const color = getColor(piece)!;
   const captured = state.board[tr][tc];
 
-  // Castling
+  
   if (pieceType === "k" && Math.abs(tc - fc) === 2) {
     const base = tc === 6 ? "O-O" : "O-O-O";
-    // Apply move to check for check/checkmate suffix
+    
     const newBoard = applyMoveOnBoard(state.board, from, to, color);
     const opp = oppositeColor(color);
     const oppInCheck = isInCheckRaw(newBoard, opp);
@@ -614,7 +600,7 @@ function generateSAN(
   let san = "";
 
   if (pieceType === "p") {
-    // Pawn move
+    
     const isCapture = fc !== tc;
     if (isCapture) {
       san += String.fromCharCode(97 + fc) + "x";
@@ -624,14 +610,14 @@ function generateSAN(
       san += "=" + promotion.toUpperCase();
     }
   } else {
-    // Piece letter
+    
     san += pieceType.toUpperCase();
 
-    // Disambiguation: check if other pieces of same type/color can reach the same square
+    
     const disambig = getDisambiguation(state, from, to, piece);
     san += disambig;
 
-    // Capture
+    
     if (captured) {
       san += "x";
     }
@@ -639,9 +625,9 @@ function generateSAN(
     san += squareToAlgebraic(tr, tc);
   }
 
-  // Check/checkmate suffix
+  
   const newBoard = applyMoveOnBoard(state.board, from, to, color);
-  // Handle promotion on the board for check detection
+  
   if (promotion && pieceType === "p") {
     const promRow = color === "w" ? 0 : 7;
     if (tr === promRow) {
@@ -673,7 +659,7 @@ function getDisambiguation(
   const [tr, tc] = to;
   const color = getColor(piece)!;
 
-  // Find all other pieces of the same type and color that can also move to the target
+  
   const others: Position[] = [];
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
@@ -688,21 +674,21 @@ function getDisambiguation(
 
   if (others.length === 0) return "";
 
-  // Try file disambiguation first
+  
   const sameFile = others.some(([, oc]) => oc === fc);
   const sameRank = others.some(([or]) => or === fr);
 
   if (!sameFile) {
-    return String.fromCharCode(97 + fc); // file letter
+    return String.fromCharCode(97 + fc); 
   }
   if (!sameRank) {
-    return String(8 - fr); // rank number
+    return String(8 - fr); 
   }
-  // Both file and rank needed
+  
   return String.fromCharCode(97 + fc) + String(8 - fr);
 }
 
-// --- Move execution ---
+
 
 export function makeMove(
   state: ChessState,
@@ -717,10 +703,10 @@ export function makeMove(
   const color = getColor(piece)!;
   const captured = state.board[tr][tc];
 
-  // Generate SAN before applying the move
+  
   const san = generateSAN(state, from, to, promotion);
 
-  // Clone state for the new position
+  
   const newState = cloneState(state);
 
   let isEnPassant = false;
@@ -728,32 +714,32 @@ export function makeMove(
   let capturedPiece: ChessPiece | null = captured as ChessPiece | null;
   let promotionPiece: ChessPiece | undefined;
 
-  // En passant capture
+  
   if (pieceType === "p" && fc !== tc && !captured) {
     isEnPassant = true;
     capturedPiece = newState.board[fr][tc] as ChessPiece;
     newState.board[fr][tc] = null;
   }
 
-  // Castling: move the rook
+  
   if (pieceType === "k" && Math.abs(tc - fc) === 2) {
     isCastling = true;
     if (tc === 6) {
-      // kingside
+      
       newState.board[fr][5] = newState.board[fr][7];
       newState.board[fr][7] = null;
     } else if (tc === 2) {
-      // queenside
+      
       newState.board[fr][3] = newState.board[fr][0];
       newState.board[fr][0] = null;
     }
   }
 
-  // Move the piece
+  
   newState.board[tr][tc] = piece;
   newState.board[fr][fc] = null;
 
-  // Promotion
+  
   if (pieceType === "p") {
     const promRow = color === "w" ? 0 : 7;
     if (tr === promRow) {
@@ -766,8 +752,8 @@ export function makeMove(
     }
   }
 
-  // Update castling rights
-  // King moved
+  
+  
   if (pieceType === "k") {
     if (color === "w") {
       newState.castling.whiteKingside = false;
@@ -777,18 +763,18 @@ export function makeMove(
       newState.castling.blackQueenside = false;
     }
   }
-  // Rook moved or captured
+  
   if (fr === 7 && fc === 0) newState.castling.whiteQueenside = false;
   if (fr === 7 && fc === 7) newState.castling.whiteKingside = false;
   if (fr === 0 && fc === 0) newState.castling.blackQueenside = false;
   if (fr === 0 && fc === 7) newState.castling.blackKingside = false;
-  // Rook captured on starting square
+  
   if (tr === 7 && tc === 0) newState.castling.whiteQueenside = false;
   if (tr === 7 && tc === 7) newState.castling.whiteKingside = false;
   if (tr === 0 && tc === 0) newState.castling.blackQueenside = false;
   if (tr === 0 && tc === 7) newState.castling.blackKingside = false;
 
-  // Update en passant target
+  
   if (pieceType === "p" && Math.abs(tr - fr) === 2) {
     const epRow = (fr + tr) / 2;
     newState.enPassantTarget = [epRow, fc];
@@ -796,22 +782,22 @@ export function makeMove(
     newState.enPassantTarget = null;
   }
 
-  // Update halfmove clock
+  
   if (pieceType === "p" || capturedPiece) {
     newState.halfmoveClock = 0;
   } else {
     newState.halfmoveClock++;
   }
 
-  // Update fullmove number
+  
   if (color === "b") {
     newState.fullmoveNumber++;
   }
 
-  // Switch turn
+  
   newState.turn = oppositeColor(color);
 
-  // Evaluate end-of-game conditions
+  
   const opp = newState.turn;
   const oppInCheck = isInCheckRaw(newState.board, opp);
   const oppHasMoves = hasMovesForColor(newState, opp);
@@ -836,7 +822,7 @@ export function makeMove(
   };
 }
 
-// --- Game state queries ---
+
 
 export function isCheck(state: ChessState): boolean {
   return isInCheckRaw(state.board, state.turn);
@@ -872,16 +858,16 @@ function isInsufficientMaterial(board: Board): boolean {
     }
   }
 
-  // K vs K
+  
   if (pieces.length === 2) return true;
 
-  // K+B vs K or K+N vs K
+  
   if (pieces.length === 3) {
     const nonKing = pieces.find((p) => p.type !== "k");
     if (nonKing && (nonKing.type === "b" || nonKing.type === "n")) return true;
   }
 
-  // K+B vs K+B with bishops on same color squares
+  
   if (pieces.length === 4) {
     const bishops = pieces.filter((p) => p.type === "b");
     if (bishops.length === 2) {

@@ -1,12 +1,5 @@
-// Sidebar - panel znajomych po lewej stronie aplikacji. Dwa taby:
-//   - "friends": lista znajomych (online/offline z badge), zaproszenia (accept/reject),
-//     wyszukiwanie po nazwie + dodawanie po username,
-//   - "dm": czat DM z wybranym znajomym - historia ostatnich 50 wiadomości,
-//     live odbiór nowych przez chat:direct_message.
-// Listenery socketu na: friend:online_status, friend:request_received, friend:accepted,
-// chat:direct_message. Po unmount socket.off w cleanup, żeby nie nadmiarowo aktualizować
-// stanu.
-// Komponent dla niezalogowanych i gości w ogóle nie jest renderowany (Layout sprawdza).
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
@@ -56,7 +49,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
         setChatMessages(prev => [...prev, msg]);
       }
     });
-    // Request current online status now that the listener is registered
+    
     socket.emit('friend:get_online');
     return () => {
       socket.off('friend:online_status');
@@ -70,12 +63,12 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
     try {
       const r = await api.get('/friends');
       setFriends(r.data);
-      // Re-sync online status after fresh friend list overwrites state
+      
       socket?.emit('friend:get_online');
-    } catch { /* ignore */ }
+    } catch {  }
   };
   const loadRequests = async () => {
-    try { const r = await api.get('/friends/requests'); setRequests(r.data); } catch { /* ignore */ }
+    try { const r = await api.get('/friends/requests'); setRequests(r.data); } catch {  }
   };
 
   const handleAddFriend = async () => {
@@ -88,10 +81,10 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
   };
 
   const handleAccept = async (id: string) => {
-    try { await api.post(`/friends/accept/${id}`); loadFriends(); loadRequests(); } catch { /* ignore */ }
+    try { await api.post(`/friends/accept/${id}`); loadFriends(); loadRequests(); } catch {  }
   };
   const handleReject = async (id: string) => {
-    try { await api.post(`/friends/reject/${id}`); loadRequests(); } catch { /* ignore */ }
+    try { await api.post(`/friends/reject/${id}`); loadRequests(); } catch {  }
   };
 
   const openChat = (friend: Friend) => {
@@ -131,7 +124,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
 
   return (
     <aside className="pr-sidebar">
-      {/* Tab switcher */}
+      
       <div className="pr-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div className="pr-tabs" style={{ flex: 1 }}>
           <button
@@ -173,7 +166,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
         )}
       </div>
 
-      {/* Search bar */}
+      
       <div style={{ padding: '10px 12px 6px', position: 'relative' }}>
         <Search size={14} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: 'var(--pr-text-muted)', pointerEvents: 'none' }} />
         <input
@@ -186,10 +179,10 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 8px' }}>
-        {/* ── Friends tab ── */}
+        
         {tab === 'friends' && (
           <>
-            {/* Add friend */}
+            
             <div style={{ display: 'flex', gap: 6, padding: '6px 12px 10px' }}>
               <input
                 className="pr-input"
@@ -204,7 +197,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
               </button>
             </div>
 
-            {/* Friend requests */}
+            
             {requests.length > 0 && (
               <>
                 <div className="pr-sidebar-section">{t('friends.requests', 'Zaproszenia')}</div>
@@ -232,7 +225,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
               </>
             )}
 
-            {/* Online friends */}
+            
             {filtered(online).length > 0 && (
               <div className="pr-sidebar-section">
                 {t('friends.online', 'Online').toUpperCase()} — {filtered(online).length}
@@ -240,7 +233,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
             )}
             {filtered(online).map(f => <FriendRow key={f._id} friend={f} onChat={() => openChat(f)} />)}
 
-            {/* Offline friends */}
+            
             {filtered(offline).length > 0 && (
               <div className="pr-sidebar-section" style={{ marginTop: 8 }}>
                 {t('friends.offline', 'Offline').toUpperCase()} — {filtered(offline).length}
@@ -256,7 +249,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
           </>
         )}
 
-        {/* ── DM tab ── */}
+        
         {tab === 'dm' && (
           chatWith ? (
             <DMChat
@@ -357,7 +350,7 @@ function DMChat({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
+      
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '8px 12px', borderBottom: '1px solid var(--pr-border-subtle)',
@@ -369,7 +362,7 @@ function DMChat({
         <span style={{ fontFamily: 'var(--font-head)', fontWeight: 600, fontSize: 14 }}>{friend.username}</span>
       </div>
 
-      {/* Messages */}
+      
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {messages.map((m, i) => (
           <div key={i} style={{ alignSelf: m.fromId === myId ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
@@ -390,7 +383,7 @@ function DMChat({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input */}
+      
       <div style={{ display: 'flex', gap: 6, padding: '8px 10px' }}>
         <input
           className="pr-input"
