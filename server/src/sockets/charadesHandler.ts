@@ -4,8 +4,7 @@
 // pogrupowane po kategoriach). Stan wszystkich aktywnych pokojów w activeGames.
 import { Server } from "socket.io";
 import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { AuthenticatedSocket } from "../middleware/socketAuth.js";
 import { Room } from "../models/Room.js";
 import { Game, pruneOldGames } from "../models/Game.js";
@@ -21,9 +20,8 @@ import { guestActiveRooms } from "./guestState.js";
 // Awaria odczytu nie wywala serwera - kalambury po prostu nie wystartują.
 let wordBank: Record<string, Record<string, string[]>> = { en: {}, pl: {} };
 try {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
   const data = readFileSync(
-    join(__dirname, "..", "data", "words.json"),
+    join(process.cwd(), "src", "data", "words.json"),
     "utf-8",
   );
   wordBank = JSON.parse(data);
